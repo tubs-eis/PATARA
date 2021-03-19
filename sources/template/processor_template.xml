@@ -1,0 +1,82 @@
+<processor>
+    <register-file>
+		<num-reg-files>2</num-reg-files>
+		<reg-file-size>32</reg-file-size>
+		<num-read-ports>4</num-read-ports>
+		<num-write-ports>2</num-write-ports>
+        <format>V_regFile_R_register_</format>
+	</register-file>
+
+    <issue-slots>
+        <default></default>
+        <description>:x</description>
+        <delimiter>\n</delimiter>
+        <max_size>2</max_size>
+    </issue-slots>
+
+    <assembly-structure>
+        <issue-slots/>
+        <space/>
+        <instruction/>
+        <immediate/>
+        <conditional/>
+        <conditional_delimiter>_</conditional_delimiter>
+        <signage/>
+        <simd/>
+        <saturation/>
+    </assembly-structure>
+
+    <immediate>
+        <default></default>
+        <short>I</short>
+        <long>IL</long>
+    </immediate>
+
+    <immediate-operand>
+        <format>#_x_</format>
+        <hex>0x</hex>
+        <bin>0b</bin>
+        <dec></dec>
+        <short>63</short>
+        <long>4294967295</long>
+    </immediate-operand>
+
+    <signage>
+        <signed></signed>
+        <unsigned>U</unsigned>
+    </signage>
+
+    <conditional>
+        <default></default>
+        <set>CS</set>
+        <read>CR</read>
+        <read-set>CRS</read-set>
+    </conditional>
+
+    <simd>
+        <v64>64</v64>
+        <v32>32</v32>
+        <v16>16</v16>
+        <v8>8</v8>
+    </simd>
+
+    <flags>
+        <carry>0000</carry>
+        <overflow>0001</overflow>
+        <zero>0010</zero>
+        <negative>0011</negative>
+        <positive>0100</positive>
+        <greater>0101</greater>
+        <greaterequal>0110</greaterequal>
+        <greaterunsigned>0111</greaterunsigned>
+        <less>1000</less>
+        <lessequal>1001</lessequal>
+        <lessunsigned>1010</lessunsigned>
+        <notcarry>1011</notcarry>
+        <notoverflow>1100</notoverflow>
+        <notzero>1101</notzero>
+        <current-transfer-finished>1111</current-transfer-finished>
+        <format>bin</format>
+    </flags>
+
+</processor>

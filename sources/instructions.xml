@@ -1,0 +1,82 @@
+<instructions-list>
+    <!-- Note 64 Bit datapath. -->
+    <default>
+        <simd>v64/v32/v16/v8/None</simd>
+        <signage>signed/unsigned</signage>
+        <saturation>overflow/saturation</saturation>
+        <conditional>None/conditional-set/conditional-read/conditional-read-set</conditional>
+        <immediate>None/short/long</immediate>
+
+    </default>
+    <add>
+        <instr>ADD TargetReg, FocusReg, randValue</instr>
+        <reverse>SUB TargetReg, TargetReg, randValue</reverse>
+        <simd>v64/v32/v16/v8</simd>
+        <signage>signed/unsigned</signage>
+        <saturation>overflow/saturation</saturation>
+        <immediate>None/short/long</immediate>
+        <conditional>None</conditional>
+    </add>
+    <sub>
+        <instr>SUB TargetReg, FocusReg, randValue</instr>
+        <reverse>ADD TargetReg, TargetReg, randValue</reverse>
+        <simd>v64/v32/v16/v8</simd>
+        <signage>signed/unsigned</signage>
+        <saturation>overflow/saturation</saturation>
+        <immediate>None/short/long</immediate>
+        <conditional>None</conditional>
+    </sub>
+    
+
+    <init>
+        <register>MVIL_32 TargetReg, #0x0f, randValue</register>
+        <register>MVIL_32 TargetReg, #0xf0, randValue</register>
+    </init>
+    <init-post>
+        <instr>NOT_SCHEDULE_BRANCH_INDEX</instr>
+    </init-post>
+
+    <immediate_ASSEMBLY>
+        <long>
+            <instr>MV randValue, randImmediate</instr>
+        </long>
+        <short>
+            <v8>
+                <instr>MV_8 randValue, randImmediate</instr>
+            </v8>
+            <v16>
+                <instr>MV_16 randValue, randImmediate</instr>
+            </v16>
+            <v32>
+                <instr>MV_32 randValue, randImmediate</instr>
+            </v32>
+            <v64>
+                <instr>MV_64 randValue, randImmediate</instr>
+            </v64>
+        </short>
+    </immediate_ASSEMBLY>
+
+
+    <conditional-read>
+        <carry>
+            <pre-instruction></pre-instruction>
+            <post-instruction></post-instruction>
+            <pre-reverse></pre-reverse>
+            <post-reverse>
+            </post-reverse>
+        </carry>
+        <zero>
+            <pre-instruction></pre-instruction>
+            <post-instruction></post-instruction>
+            <pre-reverse></pre-reverse>
+            <post-reverse>
+            </post-reverse>
+        </zero>
+    </conditional-read>
+
+    <comparison>
+        <instr>SUBCS_64 V0R0, FocusReg, TargetReg</instr>
+        <instr>// branch if V0R0 is not zero, e.g. if an error occurred</instr>
+        <instr>BSR_AND END_SIMULATION_LABEL, #0b1101, #0b10000000</instr>
+    </comparison>
+</instructions-list>

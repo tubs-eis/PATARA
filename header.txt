@@ -1,0 +1,8 @@
+// initialize Processor
+
+
+
+// reset memory, flags and register
+
+
+

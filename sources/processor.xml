@@ -1,0 +1,137 @@
+<processor>
+    <register-file>
+		<num-reg-files>2</num-reg-files>
+		<reg-file-size>32</reg-file-size>
+		<num-read-ports>4</num-read-ports>
+		<num-write-ports>2</num-write-ports>
+        <format>V_regFile_R_register_</format>
+        <blocked>
+            <register-file>0</register-file><register>0</register>
+            <register-file>0</register-file><register>1</register>
+            <register-file>0</register-file><register>2</register>
+            <register-file>0</register-file><register>3</register>
+            <register-file>0</register-file><register>4</register>
+            <register-file>0</register-file><register>5</register>
+            <register-file>0</register-file><register>6</register>
+            <register-file>0</register-file><register>7</register>
+            <register-file>0</register-file><register>8</register>
+            <register-file>0</register-file><register>9</register>
+            <register-file>0</register-file><register>10</register>
+            <register-file>0</register-file><register>11</register>
+            <register-file>0</register-file><register>12</register>
+            <register-file>0</register-file><register>13</register>
+            <register-file>0</register-file><register>14</register>
+            <register-file>0</register-file><register>15</register>
+            <register-file>0</register-file><register>16</register>
+            <register-file>0</register-file><register>17</register>
+            <register-file>0</register-file><register>18</register>
+            <register-file>0</register-file><register>19</register>
+
+        </blocked>
+	</register-file>
+
+    <issue-slots>
+        <default></default>
+        <description>:x</description>
+        <delimiter>\n</delimiter>
+        <max_size>0</max_size>
+    </issue-slots>
+
+    <assembly-structure>
+        <issue-slots/>
+        <space/>
+        <instruction/>
+        <immediate/>
+        <conditional/>
+        <conditional_delimiter>_</conditional_delimiter>
+        <signage/>
+        <simd/>
+        <saturation/>
+    </assembly-structure>
+
+    <immediate>
+        <default></default>
+        <short>I</short>
+        <long>IL</long>
+    </immediate>
+
+    <immediate-operand>
+        <format>#_x_</format>
+        <hex>0x</hex>
+        <bin>0b</bin>
+        <dec></dec>
+        <short>63</short>
+        <long>4294967295</long>
+    </immediate-operand>
+
+    <signage>
+        <signed></signed>
+        <unsigned>U</unsigned>
+    </signage>
+
+    <saturation>
+        <overflow></overflow>
+        <saturation>s</saturation>
+    </saturation>
+
+    <conditional>
+        <default></default>
+        <conditional-set>CS</conditional-set>
+        <conditional-read>CR</conditional-read>
+        <conditional-read-set>CRS</conditional-read-set>
+    </conditional>
+
+    <conditional-read>
+        <zero></zero>
+        <negative></negative>
+        <carry></carry>
+        <overflow></overflow>
+    </conditional-read>
+    <conditional-set>
+        <zero></zero>
+    </conditional-set>
+
+    <conditional-values>
+        <zero>0010</zero>
+        <negative>0011</negative>
+        <positive>0100</positive>
+        <greater>0101</greater>
+    </conditional-values>
+
+    <simd>
+        <None></None>
+        <v64>64</v64>
+        <v32>32</v32>
+        <v16>16</v16>
+        <v8>8</v8>
+    </simd>
+
+    <flags>
+        <carry>0000</carry>
+        <overflow>0001</overflow>
+        <zero>0010</zero>
+        <negative>0011</negative>
+        <positive>0100</positive>
+        <greater>0101</greater>
+        <greaterequal>0110</greaterequal>
+        <greaterunsigned>0111</greaterunsigned>
+        <less>1000</less>
+        <lessequal>1001</lessequal>
+        <lessunsigned>1010</lessunsigned>
+        <notcarry>1011</notcarry>
+        <notoverflow>1100</notoverflow>
+        <notzero>1101</notzero>
+        <current-transfer-finished>1111</current-transfer-finished>
+        <format>bin</format>
+    </flags>
+
+    <address>
+        <start>5</start>
+        <end>2047</end>
+        <format></format>
+        <hex>0x</hex>
+        <bin>0b</bin>
+        <dec></dec>
+    </address>
+
+</processor>
