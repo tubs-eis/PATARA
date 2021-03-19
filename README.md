@@ -10,7 +10,6 @@ It is based on the REVERSI methodolgy in which the processor varifies itself.
 - [Installation](#Installation)
 - [Configuring PATARA](#Configuring-PATARA)
 - [Running PATARA](#Running-PATARA)
-- [Recommendations](#Recommendations)
 
 
 [Contributors](#Contributors)
@@ -29,7 +28,7 @@ Install python modules:
 pip3 install xmltodict docutils
 ```
 
-###Configuring-PATARA
+### Configuring-PATARA
 The following configuration steps are available to configure PATARA to a custom processor.
 The configuration files are stored in `sources`.
 
@@ -42,7 +41,7 @@ The configuration files are stored in `sources`.
 
 
 
-###Running-PATARA
+### Running-PATARA
 To access the help message, run 
 
 ```bash
