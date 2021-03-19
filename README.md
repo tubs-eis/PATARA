@@ -45,7 +45,7 @@ The configuration files are stored in `sources`.
 To access the help message, run 
 
 ```bash
-python3 main.py
+python3 main.py -h 
 ```
 
 A single instruction test can be started with
