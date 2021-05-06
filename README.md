@@ -26,7 +26,7 @@ There is a description of the  processor as well as a configuration file to desc
 ### Installation
 Clone the repository
 ```bash
-git clone https://github.com/c3e-tubs/PATARA
+git clone https://github.com/tubs-eis/PATARA.git
 ```
 
 Install python modules:
