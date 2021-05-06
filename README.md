@@ -1,7 +1,13 @@
 # PATARA: Post-Silicon Validation Tool based on REVERSI
 
 PATARA is an open-source tool for post-silicon validation of **any** fabricated processor. 
-It is based on the REVERSI methodolgy in which the processor varifies itself.
+It is based on the REVERSI methodology in which the processor validates itself. 
+The validation process is performed on random data and random instructions.
+Therefore this tool can functionally verify functional units, and interactions between functional units and modules.
+
+PATARA uses XML-configuration files to describe the characteristcs of a custom processor and it enables quick and easy adaptation to custom processors and ISAs. 
+There is a description of the  processor as well as a configuration file to describe the instruction tests.
+
 
 ## Table of Contents
 
