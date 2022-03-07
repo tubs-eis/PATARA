@@ -11,9 +11,9 @@ There is a description of the  processor as well as a configuration file to desc
 
 The PATARA tool is described in the following paper. If you are using PATARA, please cite it as follows:
 
->F. Stuckmann,P. A. Fistanto and G. Payá-Vayá. "PATARA: A REVERSI-Based Open-Source Tool 
->for Post-Silicon Validation of Processor Cores". 2021 10th International Conference on 
->Modern Circuits and Systems Technologies (MOCAST), 2021, accepted for publication.
+> F. Stuckmann,P. A. Fistanto and G. Payá-Vayá. "PATARA: A REVERSI-Based Open-Source Tool
+> for Post-Silicon Validation of Processor Cores". 2021 10th International Conference on
+> Modern Circuits and Systems Technologies (MOCAST), 2021, https://doi.org/10.1109/mocast52088.2021.9493373
 
 
 
