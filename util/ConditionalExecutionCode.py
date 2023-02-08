@@ -1,25 +1,16 @@
-# Copyright (c) 2022 Chair for Chip Design for Embedded Computing,
-#                    Technische Universitaet Braunschweig, Germany
-#                    www.tu-braunschweig.de/en/eis
-#
-# Use of this source code is governed by an MIT-style
-# license that can be found in the LICENSE file or at
-# https://opensource.org/licenses/MIT.
 from typing import List
 
 import xmltodict
 
-import Constants
+from Constants import *
 from util.Instruction import Instruction
-from util.Processor import Processor
 
 
 class ConditionalExecutionCode:
-
     class __ConditionalExecutionCode:
-        def __init__(self):
+        def __init__(self, architecture):
             self.conditionalData = {}
-            self.initialize()
+            self.initialize(architecture)
 
         def _createInstructionList(self, instructionList):
             result = []
@@ -27,100 +18,86 @@ class ConditionalExecutionCode:
                 result.append(Instruction(instr))
             return result
 
-
-        def initialize(self):
+        def initialize(self, architecture):
             self.immediateAssembly = None
-            file = open(Constants.PATH_INSTRUCTION)
+            file = open(get_path_instruction(architecture))
             xml_content = xmltodict.parse(file.read())
 
-            for group in xml_content[Constants.INST_LIST]:
-                if group == Constants.CONDITIONAL_READ:
-                    conditionVariants = xml_content[Constants.INST_LIST][Constants.CONDITIONAL_READ]
+            for group in xml_content[INST_LIST]:
+                if group == CONDITIONAL_READ:
+                    conditionVariants = xml_content[INST_LIST][CONDITIONAL_READ]
                     for condition in conditionVariants:
                         self.conditionalData[condition] = {}
                         for conditionFlag in conditionVariants[condition]:
-                            self.conditionalData[condition][conditionFlag] ={}
-                            simd = Constants.vMutable
+                            self.conditionalData[condition][conditionFlag] = {}
+                            simd = V_MUTABLE
                             if conditionVariants[condition][conditionFlag]:
-                                if Constants.INSTR in conditionVariants[condition][conditionFlag]:
-                                    self.conditionalData[condition][conditionFlag][simd] = self._createInstructionList(conditionVariants[condition][conditionFlag][
-                                                                                                                           Constants.INSTR])
-                                    n=3
-                                elif  Constants.REVERSE in  conditionVariants[condition][conditionFlag]:
+                                if INSTR in conditionVariants[condition][conditionFlag]:
                                     self.conditionalData[condition][conditionFlag][simd] = self._createInstructionList(
                                         conditionVariants[condition][conditionFlag][
-                                            Constants.REVERSE])
-                                    n=3
+                                            INSTR])
+                                elif REVERSE in conditionVariants[condition][conditionFlag]:
+                                    self.conditionalData[condition][conditionFlag][simd] = self._createInstructionList(
+                                        conditionVariants[condition][conditionFlag][
+                                            REVERSE])
                                 else:
                                     for simdVariant in conditionVariants[condition][conditionFlag]:
-                                        simdAssembly = Processor().getProcessorFeatureAssembly(Constants.SIMD, simdVariant)
+                                        # simdAssembly = Processor().getProcessorFeatureAssembly(SIMD, simdVariant)
                                         self.conditionalData[condition][conditionFlag][
-                                            simdAssembly] = self._createInstructionList(
+                                            simdVariant] = self._createInstructionList(
                                             conditionVariants[condition][conditionFlag][simdVariant][
-                                                Constants.REVERSE])
-                                    # simd =
-                                    # self.conditionalData[condition][conditionFlag] = ]
-                                    n=3
-
-                    n=3
+                                                REVERSE])
+            n = 3
 
     instance = None
 
-    def __init__(self):
+    def __init__(self, architecture="rv32imc"):
         if not ConditionalExecutionCode.instance:
-            ConditionalExecutionCode.instance = ConditionalExecutionCode.__ConditionalExecutionCode()
-        n=3
-
+            ConditionalExecutionCode.instance = ConditionalExecutionCode.__ConditionalExecutionCode(architecture)
+        n = 3
 
     def getPreInstruction(self, simdAssembly, conditionFlag) -> List[Instruction]:
-        conditionCode = self.instance.conditionalData[conditionFlag][Constants.CONDITION_PRE_INSTRUCTION]
+        conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_PRE_INSTRUCTION]
         if conditionCode:
             if simdAssembly in conditionCode:
                 return conditionCode[simdAssembly]
             else:
-                return conditionCode[Constants.vMutable]
+                return conditionCode[V_MUTABLE]
         else:
             return None
 
     def getPostInstruction(self, simdAssembly, conditionFlag) -> str:
-        conditionCode = self.instance.conditionalData[conditionFlag][Constants.CONDITION_POST_INSTRUCTION]
+        conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_POST_INSTRUCTION]
         if conditionCode:
             if simdAssembly in conditionCode:
                 return conditionCode[simdAssembly]
             else:
-                return conditionCode[Constants.vMutable]
+                return conditionCode[V_MUTABLE]
         else:
             return None
 
     def getPreReverse(self, simdAssembly, conditionFlag) -> str:
-        conditionCode = self.instance.conditionalData[conditionFlag][Constants.CONDITION_PRE_REVERSE]
+        conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_PRE_REVERSE]
         if conditionCode:
             if simdAssembly in conditionCode:
                 return conditionCode[simdAssembly]
             else:
-                return conditionCode[Constants.vMutable]
+                return conditionCode[V_MUTABLE]
         else:
             return None
-
 
     def getPostReverse(self, simdAssembly, conditionFlag) -> str:
-        conditionCode = self.instance.conditionalData[conditionFlag][Constants.CONDITION_POST_REVERSE]
+        conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_POST_REVERSE]
         if conditionCode:
             if simdAssembly in conditionCode:
                 return conditionCode[simdAssembly]
             else:
-                return conditionCode[Constants.vMutable]
+                return conditionCode[V_MUTABLE]
         else:
             return None
 
-
     def isEnabled(self, enabledFlags):
-        if Constants.CONDITIONAL in enabledFlags:
-            enabledCondition = None != enabledFlags[Constants.CONDITIONAL]
-            if enabledCondition:
-                return Constants.CONDITIONAL_READ == Processor().getAssemlby2Feature(enabledFlags[Constants.CONDITIONAL])
-            else:
-                return False
+        if CONDITIONAL in enabledFlags:
+            return CONDITIONAL_READ == enabledFlags[CONDITIONAL]
         else:
             return False
-

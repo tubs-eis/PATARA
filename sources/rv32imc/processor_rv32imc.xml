@@ -1,0 +1,160 @@
+<processor>
+    <register-file>
+        <num-reg-files>1</num-reg-files>
+        <reg-file-size>32</reg-file-size>
+        <num-read-ports>2</num-read-ports>
+        <num-write-ports>1</num-write-ports>
+        <format>x_register_</format>
+        <blocked>
+            <register-file>0</register-file>
+            <register>5</register>
+            <register-file>0</register-file>
+            <register>6</register>
+            <register-file>0</register-file>
+            <register>7</register>
+            <register-file>0</register-file>
+            <register>28</register>
+            <register-file>0</register-file>
+            <register>29</register>
+            <register-file>0</register-file>
+            <register>30</register>
+        </blocked>
+        <ignore>
+            <register-file>0</register-file>
+            <register>0</register>
+        </ignore>
+        <immediate>
+            <register-file>0</register-file>
+            <register>31</register>
+        </immediate>
+    </register-file>
+
+
+    <!-- NOTE: from kavuaka -->
+    <issue-slots>
+        <default></default>
+        <description>:x</description>
+        <delimiter>\n</delimiter>
+        <max_size>0</max_size>
+        <!-- do not complicate Issue Slot usage with conditional exec. otherwise use max_size = 2 -->
+    </issue-slots>
+
+    <assembly-structure>
+        <instruction/>
+        <immediate/>
+        <signage/>
+    </assembly-structure>
+
+    <immediate>
+        <default>i12</default>
+        <i5>i</i5>
+        <i12>i</i12>
+        <i12n></i12n>
+        <i20></i20>
+        <i32>i</i32>
+    </immediate>
+
+    <immediate-operand>
+        <format>_x_</format>
+        <hex>0x</hex>
+        <dec></dec>
+        <i5>31</i5>
+        <i12>2047</i12>
+        <i12n>2047</i12n>
+        <i20>1048575</i20>
+        <i32>4294967295</i32>
+    </immediate-operand>
+
+    <signage>
+        <signed></signed>
+        <unsigned>u</unsigned>
+        <signed-unsigned>su</signed-unsigned>
+    </signage>
+
+    <!-- NOTE: from kavuaka -->
+    <saturation>
+        <overflow></overflow>
+        <saturation>s</saturation>
+    </saturation>
+
+    <!--    &lt;!&ndash; NOTE: from kavuaka &ndash;&gt;-->
+    <!--    <conditional>-->
+    <!--        <default></default>-->
+    <!--        <conditional-set>CS</conditional-set>-->
+    <!--        <conditional-read>CR</conditional-read>-->
+    <!--        <conditional-read-set>CRS</conditional-read-set>-->
+    <!--    </conditional>-->
+
+    <!--    &lt;!&ndash; NOTE: from kavuaka &ndash;&gt;-->
+    <!--    <conditional-read>-->
+    <!--        <zero></zero>-->
+    <!--    </conditional-read>-->
+    <!--    <conditional-set>-->
+    <!--        <zero></zero>-->
+    <!--    </conditional-set>-->
+
+    <!--    &lt;!&ndash; NOTE: from kavuaka &ndash;&gt;-->
+    <!--    <conditional-values>-->
+    <!--        <zero>0010</zero>-->
+    <!--        <negative>0011</negative>-->
+    <!--        <positive>0100</positive>-->
+    <!--        <greater>0101</greater>-->
+    <!--    </conditional-values>-->
+
+    <!--    &lt;!&ndash; NOTE: from kavuaka &ndash;&gt;-->
+    <!--    <simd>-->
+    <!--        <None></None>-->
+    <!--        <v64>64</v64>-->
+    <!--        <v32>32</v32>-->
+    <!--        <v16>16</v16>-->
+    <!--        <v8>8</v8>-->
+    <!--    </simd>-->
+
+    <!--    &lt;!&ndash; NOTE: from kavuaka &ndash;&gt;-->
+    <!--    <flags>-->
+    <!--        <carry>0000</carry>-->
+    <!--        <overflow>0001</overflow>-->
+    <!--        <zero>0010</zero>-->
+    <!--        <negative>0011</negative>-->
+    <!--        <positive>0100</positive>-->
+    <!--        <greater>0101</greater>-->
+    <!--        <greaterequal>0110</greaterequal>-->
+    <!--        <greaterunsigned>0111</greaterunsigned>-->
+    <!--        <less>1000</less>-->
+    <!--        <lessequal>1001</lessequal>-->
+    <!--        <lessunsigned>1010</lessunsigned>-->
+    <!--        <notcarry>1011</notcarry>-->
+    <!--        <notoverflow>1100</notoverflow>-->
+    <!--        <notzero>1101</notzero>-->
+    <!--        <current-transfer-finished>1111</current-transfer-finished>-->
+    <!--        <format>bin</format>-->
+    <!--    </flags>-->
+
+    <address>
+        <offset>8000</offset>
+        <end>2097152</end>
+        <aligned>4</aligned>
+        <format></format>
+        <hex>0x</hex>
+        <dec></dec>
+        <imem-overlap></imem-overlap>
+    </address>
+
+    <max-conditional-branch-distance>150</max-conditional-branch-distance>
+    <branch-target>:</branch-target>
+
+    <comment>#</comment>
+    <assembler-ending>S</assembler-ending>
+    <d-cache>
+        <lines>32</lines>
+        <BytePerLine>1024</BytePerLine>
+        <associative>2</associative>
+        <word-size-bits>32</word-size-bits>
+    </d-cache>
+    <i-cache>
+        <lines>16</lines>
+        <BytePerLine>1024</BytePerLine>
+        <associative>1</associative>
+        <word-size-bits>32</word-size-bits>
+    </i-cache>
+</processor>

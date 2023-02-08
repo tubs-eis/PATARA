@@ -1,0 +1,2200 @@
+<instructions-list>
+    <default>
+        <signage>signed/unsigned/signed-unsigned</signage>
+        <immediate>None/i5/i12/i12n/i20</immediate>
+        <aligned>None/1/2/4</aligned>
+        <switch>None/true</switch>
+    </default>
+
+    <!-- Info: Computational instructions -->
+
+    <add>
+        <instr>add TargetReg, FocusReg, randValue</instr>
+        <sequence-instr>add PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+        <reverse>sub TargetReg, TargetReg, randValue</reverse>
+
+        <signage>signed</signage>
+        <immediate>None/i12</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <instr>add TargetReg, randValue, FocusReg</instr>
+                    <sequence-instr>add PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+                    <reverse>sub TargetReg, TargetReg, randValue</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </add>
+
+    <sub>
+        <instr>sub TargetReg, FocusReg, randValue</instr>
+        <sequence-instr>sub PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+        <reverse>add TargetReg, TargetReg, randValue</reverse>
+
+        <signage>signed</signage>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <instr>sub TargetReg, randValue, FocusReg</instr>
+                    <sequence-instr>sub PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+                    <reverse>neg t0, TargetReg</reverse>
+                    <reverse>add TargetReg, randValue, t0</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </sub>
+
+    <sll>
+        <!-- store FocusReg value -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+        <!-- sll instruction -->
+        <instr>sll TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>sll PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <!-- restore FocusReg Value-->
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <reverse>srl TargetReg, TargetReg, randValue</reverse>
+        <!-- ones at bits from lost bits after shift -->
+        <reverse>li t1, -1</reverse>
+        <reverse>srl t1, t1, randValue</reverse>
+        <reverse>not t1, t1</reverse>
+        <reverse>and t0, t0, t1</reverse> <!-- word with lost bits -->
+        <reverse>or TargetReg, TargetReg, t0</reverse>
+
+        <signage>signed</signage>
+        <immediate>None/i5</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+
+        <specialization>
+            <switch>
+                <true>
+                    <!-- store FocusReg value -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- sll instruction -->
+                    <instr>sll TargetReg, randValue, FocusReg</instr>
+
+                    <sequence-instr>sll PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+
+                    <!-- restore shift value -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- get shift amount -->
+                    <reverse>li t1, 0x1f</reverse>
+                    <reverse>and t2, t0, t1</reverse>
+                    <!-- get MSB of random value -->
+                    <reverse>srl t3, TargetReg, t2</reverse>
+                    <!-- special zero handling -->
+                    <reverse>beqz t2, SLL_SWITCH_ZERO_BRANCH_INDEX</reverse>
+                    <!-- calculate random MSBs -->
+                    <!-- leading 1 at MSB, SRA so that only 1s remain -->
+                    <reverse>lui t4, 0x80000</reverse>
+                    <reverse>addi t2, t2, -1</reverse>
+                    <reverse>sra t4, t4, t2</reverse>
+                    <reverse>xori t4, t4, -1</reverse>
+                    <reverse>and t4, t4, randValue</reverse>
+                    <reverse>beq t3, t4, SLL_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse>
+                    <reverse>SLL_SWITCH_ZERO_BRANCH_INDEX:</reverse>
+                    <reverse>beq randValue, TargetReg, SLL_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse>
+                    <!-- set false focusReg Value -->
+                    <reverse>addi t0, t0, -1</reverse>
+
+                    <reverse>SLL_SWITCH_SET_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+
+                </true>
+            </switch>
+        </specialization>
+    </sll>
+
+    <srl>
+        <!-- store FocusReg value -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+        <!-- srl instruction -->
+        <instr>srl TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>srl PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <!-- restore FocusReg Value-->
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <reverse>sll TargetReg, TargetReg, randValue</reverse>
+        <!-- ones at bits from lost bits after shift -->
+        <reverse>li t1, -1</reverse>
+        <reverse>sll t1, t1, randValue</reverse>
+        <reverse>not t1, t1</reverse>
+        <reverse>and t0, t0, t1</reverse> <!-- word with lost bits -->
+        <reverse>or TargetReg, TargetReg, t0</reverse>
+
+        <signage>signed</signage>
+        <immediate>None/i5</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <!-- store FocusReg value -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- sll instruction -->
+                    <instr>srl TargetReg, randValue, FocusReg</instr>
+
+                    <sequence-instr>srl PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+
+                    <!-- restore FocusReg Value-->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- get shift amount -->
+                    <reverse>li t1, 0x1f</reverse>
+                    <reverse>and t2, t0, t1</reverse>
+                    <!-- get MSB of random value -->
+                    <reverse>sll t3, TargetReg, t2</reverse>
+                    <!-- calculate random MSBs -->
+                    <reverse>li t4, -1</reverse>
+                    <reverse>sll t4, t4, t2</reverse>
+                    <reverse>and t4, t4, randValue</reverse>
+
+                    <reverse>beq t3, t4, SRA_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse>
+
+                    <!-- set false focusReg Value -->
+                    <reverse>addi t0, t0, -1</reverse>
+
+                    <reverse>SRA_SWITCH_SET_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </srl>
+
+    <sra>
+        <!-- store FocusReg value -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+        <!-- sra instruction -->
+        <instr>sra TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>sra PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <!-- restore FocusReg Value-->
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <!-- check for right MSB -->
+        <reverse>srli t1, t0, 31</reverse>
+        <reverse>srli t2, TargetReg, 31</reverse>
+        <reverse>bne t1, t2, SRA_MSB_NOT_RIGHT_BRANCH_INDEX</reverse>
+        <!-- revert shift-->
+        <reverse>sll TargetReg, TargetReg, randValue</reverse>
+        <!-- ones at bits from lost bits after shift -->
+        <reverse>li t1, -1</reverse>
+        <reverse>sll t1, t1, randValue</reverse>
+        <reverse>not t1, t1</reverse>
+        <reverse>and t0, t0, t1</reverse> <!-- word with lost bits -->
+        <reverse>j SRA_SET_TARGETREG_BRANCH_INDEX</reverse>
+        <!-- set TargetReg to false FocusReg -->
+        <reverse>SRA_MSB_NOT_RIGHT_BRANCH_INDEX:</reverse>
+        <!-- set false focusReg Value -->
+        <reverse>addi t0, t0, -1</reverse>
+        <reverse>SRA_SET_TARGETREG_BRANCH_INDEX:</reverse>
+        <reverse>or TargetReg, TargetReg, t0</reverse>
+
+        <signage>signed</signage>
+        <immediate>None/i5</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <!-- store FocusReg value -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- sra instruction -->
+                    <instr>sra TargetReg, randValue, FocusReg</instr>
+
+                    <sequence-instr>sra PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+
+
+                    <!-- restore FocusReg Value-->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- get shift amount -->
+                    <reverse>li t1, 0x1f</reverse>
+                    <reverse>and t2, t0, t1</reverse>
+                    <!-- get MSB of random value -->
+                    <reverse>sll t3, TargetReg, t2</reverse>
+                    <!-- calculate random MSBs -->
+                    <reverse>li t4, -1</reverse>
+                    <reverse>sll t4, t4, t2</reverse>
+                    <reverse>and t4, t4, randValue</reverse>
+
+                    <reverse>beq t3, t4, SRA_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse>
+
+                    <!-- set false focusReg Value -->
+                    <reverse>addi t0, t0, -1</reverse>
+
+                    <reverse>SRA_SWITCH_SET_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+
+
+                </true>
+            </switch>
+        </specialization>
+    </sra>
+
+    <and>
+        <!-- inverte FocusReg and randValue-->
+        <instr>not t0, FocusReg</instr>
+        <instr>not t1, randValue</instr>
+        <!-- (notFocusReg and randValue) or (notrandValue and FocusReg)-->
+        <instr>and t0, t0, randValue</instr>
+        <instr>
+            and t1, t1, FocusReg
+            <enable>
+                <immediate>None</immediate>
+            </enable>
+        </instr>
+        <instr>or TargetReg, t0, t1</instr>
+
+        <reverse>xor TargetReg, TargetReg, randValue</reverse>
+
+        <signage>signed</signage>
+        <immediate>None/i12</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <!-- inverte FocusReg and randValue-->
+                    <instr>not t0, randValue</instr>
+                    <instr>not t1, FocusReg</instr>
+                    <!-- (notrandValue and FocusReg) or (notFocusReg and randValue)-->
+                    <instr>and t0, FocusReg, t0</instr>
+                    <instr>and t1, randValue, t1</instr>
+                    <instr>or TargetReg, t0, t1</instr>
+
+                    <reverse>xor TargetReg, randValue, TargetReg</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </and>
+
+    <or>
+        <!-- inverte FocusReg and randValue-->
+        <instr>not t0, FocusReg</instr>
+        <instr>not t1, randValue</instr>
+        <!-- not((notFocusReg or randValue) and (notrandValue or FocusReg))-->
+        <instr>or t0, t0, randValue</instr>
+        <instr>
+            or t1, t1, FocusReg
+            <enable>
+                <immediate>None</immediate>
+            </enable>
+        </instr>
+        <instr>and t0, t0, t1</instr>
+        <instr>not TargetReg, t0</instr>
+
+        <reverse>xor TargetReg, TargetReg, randValue</reverse>
+        <signage>signed</signage>
+        <immediate>None/i12</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <!-- inverte FocusReg and randValue-->
+                    <instr>not t0, randValue</instr>
+                    <instr>not t1, FocusReg</instr>
+                    <!-- not((notrandValue or FocusReg) and (notFocusReg or randValue))-->
+                    <instr>or t0, FocusReg, t0</instr>
+                    <instr>or t1, randValue, t1</instr>
+                    <instr>and t0, t1, t0</instr>
+                    <instr>not TargetReg, t0</instr>
+
+                    <reverse>xor TargetReg, randValue, TargetReg</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </or>
+
+    <xor>
+        <instr>xor TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>xor PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <!-- inverte targetReg and randValue without using xor-->
+        <reverse>neg t0, TargetReg</reverse>
+        <reverse>addi t0, t0, -1</reverse>
+        <reverse>neg t1, randValue</reverse>
+        <reverse>addi t1, t1, -1</reverse>
+        <!-- (notTargetReg and randValue) or (notrandValue and TargetReg)-->
+        <reverse>and t0, t0, randValue</reverse>
+        <reverse>and t1, t1, TargetReg</reverse>
+        <reverse>or TargetReg, t0, t1</reverse>
+
+        <signage>signed</signage>
+        <immediate>None/i12</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <instr>xor TargetReg, randValue, FocusReg</instr>
+
+                    <sequence-instr>xor PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+
+                    <!-- inverte targetReg and randValue without using xor-->
+                    <reverse>neg t0, randValue</reverse>
+                    <reverse>addi t0, t0, -1</reverse>
+                    <reverse>neg t1, TargetReg</reverse>
+                    <reverse>addi t1, t1, -1</reverse>
+                    <!-- (notrandValue and TargetReg) or (notTargetReg and randValue) -->
+                    <reverse>and t0, TargetReg, t0</reverse>
+                    <reverse>and t1, randValue, t1</reverse>
+                    <reverse>or TargetReg, t0, t1</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </xor>
+
+    <slt>
+        <!-- store FocusReg value -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+        <!-- slt instruction -->
+        <instr>slt TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>slt PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <!-- restore FocusReg Value-->
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <!-- set false focusReg Value -->
+        <reverse>addi t1, t0, -1</reverse>
+        <!-- check if instruction was right-->
+        <reverse>blt t0, randValue, SLT_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX</reverse>
+        <!-- should be zero -->
+        <reverse>beqz TargetReg, SLT_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+        <reverse>j SLT_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not zero -->
+        <!-- should be one-->
+        <reverse>SLT_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX:</reverse>
+        <reverse>li t2, 1</reverse>
+        <reverse>beq TargetReg, t2, SLT_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+        <reverse>j SLT_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not one -->
+        <!-- is right -->
+        <reverse>SLT_RESTORE_TARGETREG_BRANCH_INDEX:</reverse>
+        <reverse>mv t1, t0</reverse>
+        <!-- is wrong -->
+        <reverse>SLT_SET_TARGETREG_BRANCH_INDEX:</reverse>
+        <reverse>mv TargetReg, t1</reverse>
+
+        <signage>signed/unsigned</signage>
+        <immediate>None/i12</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+
+        <specialization>
+            <signage>
+                <unsigned>
+                    <!-- store FocusReg value -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- slt -->
+                    <instr>slt TargetReg, FocusReg, randValue</instr>
+
+                    <sequence-instr>slt PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+                    <!-- restore FocusReg Value-->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- set false FocusReg Value -->
+                    <reverse>addi t1, t0, -1</reverse>
+                    <!-- check if instruction was right-->
+                    <reverse>bltu t0, randValue, SLTU_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX</reverse>
+                    <!-- should be zero -->
+                    <reverse>beqz TargetReg, SLTU_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+                    <reverse>j SLTU_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not zero -->
+                    <!-- should be one-->
+                    <reverse>SLTU_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX:</reverse>
+                    <reverse>li t2, 1</reverse>
+                    <reverse>beq TargetReg, t2, SLTU_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+                    <reverse>j SLTU_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not one -->
+                    <!-- is right -->
+                    <reverse>SLTU_RESTORE_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv t1, t0</reverse>
+                    <!-- is wrong -->
+                    <reverse>SLTU_SET_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t1</reverse>
+                    <specialization>
+                        <switch>
+                            <true>
+                                <!-- store FocusReg value -->
+                                <instr>li t0, ADDRESS</instr>
+                                <instr>sw FocusReg, 0(t0)</instr>
+                                <!-- slt -->
+                                <instr>slt TargetReg, randValue, FocusReg</instr>
+
+                                <sequence-instr>slt PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+
+                                <!-- restore FocusReg Value-->
+                                <reverse>li t0, ADDRESS</reverse>
+                                <reverse>lw t0, 0(t0)</reverse>
+                                <!-- set false FocusReg Value -->
+                                <reverse>addi t1, t0, -1</reverse>
+                                <!-- check if instruction was right-->
+                                <reverse>bltu randValue, t0, SLTU_SWITCH_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX
+                                </reverse>
+                                <!-- should be zero -->
+                                <reverse>beqz TargetReg, SLTU_SWITCH_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+                                <reverse>j SLTU_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not zero -->
+                                <!-- should be one-->
+                                <reverse>SLTU_SWITCH_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX:</reverse>
+                                <reverse>li t2, 1</reverse>
+                                <reverse>beq TargetReg, t2, SLTU_SWITCH_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+                                <reverse>j SLTU_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not one -->
+                                <!-- is right -->
+                                <reverse>SLTU_SWITCH_RESTORE_TARGETREG_BRANCH_INDEX:</reverse>
+                                <reverse>mv t1, t0</reverse>
+                                <!-- is wrong -->
+                                <reverse>SLTU_SWITCH_SET_TARGETREG_BRANCH_INDEX:</reverse>
+                                <reverse>mv TargetReg, t1</reverse>
+                            </true>
+                        </switch>
+                    </specialization>
+                </unsigned>
+            </signage>
+            <switch>
+                <true>
+                    <!-- store FocusReg value -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- slt instruction -->
+                    <instr>slt TargetReg, randValue, FocusReg</instr>
+
+                    <sequence-instr>slt PlainTargetReg, randValue, FocusSequenceReg</sequence-instr>
+
+                    <!-- restore FocusReg Value-->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- set false focusReg Value -->
+                    <reverse>addi t1, t0, -1</reverse>
+                    <!-- check if instruction was right-->
+                    <reverse>blt randValue, t0, SLT_SWITCH_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX</reverse>
+                    <!-- should be zero -->
+                    <reverse>beqz TargetReg, SLT_SWITCH_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+                    <reverse>j SLT_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not zero -->
+                    <!-- should be one-->
+                    <reverse>SLT_SWITCH_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX:</reverse>
+                    <reverse>li t2, 1</reverse>
+                    <reverse>beq TargetReg, t2, SLT_SWITCH_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+                    <reverse>j SLT_SWITCH_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not one -->
+                    <!-- is right -->
+                    <reverse>SLT_SWITCH_RESTORE_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv t1, t0</reverse>
+                    <!-- is wrong -->
+                    <reverse>SLT_SWITCH_SET_TARGETREG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t1</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </slt>
+
+    <lui>
+        <!-- store FocusReg value -->
+        <instr>addi t0, zero, ADDRESS[31:21]</instr>
+        <instr>slli t0, t0, 21</instr>
+        <instr>addi t1, zero, ADDRESS[20:10]</instr>
+        <instr>slli t1, t1, 10</instr>
+        <instr>add t0, t0, t1</instr>
+        <instr>addi t1, zero, ADDRESS[9:0]</instr>
+        <instr>add t0, t0, t1</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+        <!-- instruction lui -->
+        <instr>lui TargetReg, randValue</instr>
+
+        <sequence-instr>lui PlainTargetReg, randImmediate</sequence-instr>
+
+        <!-- restore FocusReg value -->
+        <reverse>addi t0, zero, ADDRESS[31:21]</reverse>
+        <reverse>slli t0, t0, 21</reverse>
+        <reverse>addi t1, zero, ADDRESS[20:10]</reverse>
+        <reverse>slli t1, t1, 10</reverse>
+        <reverse>add t0, t0, t1</reverse>
+        <reverse>addi t1, zero, ADDRESS[9:0]</reverse>
+        <reverse>add t0, t0, t1</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <!-- set false focusReg Value -->
+        <reverse>addi t1, t0, -1</reverse>
+        <!-- simulate lui -->
+        <reverse>addi t2, zero, randImmediate[19:9]</reverse>
+        <reverse>slli t2, t2, 21</reverse>
+        <reverse>addi t3,zero, randImmediate[8:0]</reverse>
+        <reverse>slli t3, t3, 12</reverse>
+        <reverse>add t2, t2, t3</reverse>
+        <!-- compare lui and simulated lui -->
+        <reverse>beq TargetReg, t2, LUI_RESTORE_TARGETREG_BRANCH_INDEX</reverse>
+        <reverse>j LUI_SET_TARGETREG_BRANCH_INDEX</reverse> <!--is not one -->
+        <!-- is right -->
+        <reverse>LUI_RESTORE_TARGETREG_BRANCH_INDEX:</reverse>
+        <reverse>addi t1, t1, 1</reverse>
+        <!-- is wrong -->
+        <reverse>LUI_SET_TARGETREG_BRANCH_INDEX:</reverse>
+        <reverse>mv TargetReg, t1</reverse>
+
+        <signage>signed</signage>
+        <immediate>i20</immediate>
+        <type>U</type>
+    </lui>
+
+    <auipc>
+        <instr>addi t0, FocusReg, -1</instr>
+
+        <instr>auipc t1, randImmediate</instr>
+        <instr>jal t2, AUIPC_BRANCH_BRANCH_INDEX</instr>
+
+        <instr>AUIPC_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>AUIPC_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>j AUIPC_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>AUIPC_BRANCH_BRANCH_INDEX:</reverse> <!-- branch taken-->
+        <!--  check if pc + randValue was stored right -->
+        <reverse>addi t2, t2, -8</reverse>
+        <reverse>lui t3, randImmediate</reverse>
+        <reverse>add t2, t2, t3</reverse>
+        <reverse>beq t1, t2, AUIPC_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+        <reverse>j AUIPC_SET_TARGETREG_BRANCH_INDEX</reverse>
+
+        <reverse>AUIPC_END_REV_BRANCH_INDEX:</reverse>
+
+        <signage>signed</signage>
+        <immediate>i20</immediate>
+        <type>U</type>
+    </auipc>
+
+    <!-- Info: Memory access instructions -->
+    <lb>
+        <!-- initialise memory addresses -->
+        <instr>li t0, TEST_ADDRESS</instr>
+        <!-- store word -->
+        <instr>sw FocusReg, 0(t0)</instr>
+
+        <!-- forward FocusReg with TargetReg -->
+        <instr>mv TargetReg, FocusReg</instr>
+
+        <!-- initialise memory addresses -->
+        <reverse>li t0, TEST_ADDRESS</reverse>
+        <reverse>sub t1, t0, randValue</reverse>
+        <!-- load byte -->
+        <reverse>lb t1, randImmediate(t1)</reverse>
+        <!-- restore rest -->
+        <reverse>lw t0, 0(t0)</reverse>
+        <reverse>mv t2, t0</reverse> <!-- for highest bit -->
+        <reverse>srli t0, t0, 8</reverse>
+        <reverse>slli t0, t0, 8</reverse>
+
+        <!-- highest bit-->
+        <reverse>slli t2, t2, 24</reverse>
+        <reverse>srli t2, t2, 31</reverse>
+        <reverse>beqz t2, LB_SIGNED_BIT_ZERO_BRANCH_INDEX</reverse>
+
+        <!-- signed bit 1 -->
+        <reverse>li t2, 0xFFFFFF00</reverse>
+        <reverse>sub t1, t1, t2</reverse>
+
+        <!-- signed bit zero -->
+        <reverse>LB_SIGNED_BIT_ZERO_BRANCH_INDEX:</reverse>
+        <reverse>add t0, t0, t1</reverse>
+
+        <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+        <reverse>beq t0, TargetReg, LB_NO_ERROR</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+        <reverse>LB_NO_ERROR:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <signage>signed/unsigned</signage>
+        <immediate>i12n</immediate>
+        <aligned>4</aligned>
+        <type>I</type>
+
+        <specialization>
+            <signage>
+                <unsigned>
+                    <!-- initialise memory addresses -->
+                    <instr>li t0, TEST_ADDRESS</instr>
+                    <!-- store word -->
+                    <instr>sw FocusReg, 0(t0)</instr>
+
+                    <!-- forward FocusReg with TargetReg -->
+                    <instr>mv TargetReg, FocusReg</instr>
+
+                    <!-- initialise memory addresses -->
+                    <reverse>li t0, TEST_ADDRESS</reverse>
+                    <reverse>sub t1, t0, randValue</reverse>
+                    <!-- load byte -->
+                    <reverse>lb t1, randImmediate(t1)</reverse>
+                    <!-- restore rest -->
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <reverse>srli t0, t0, 8</reverse>
+                    <reverse>slli t0, t0, 8</reverse>
+                    <reverse>add t0, t0, t1</reverse>
+                    <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+                    <reverse>beq t0, TargetReg, LB_NO_ERROR</reverse>
+                    <reverse>addi t0, t0, 1</reverse>
+                    <reverse>LB_NO_ERROR:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                </unsigned>
+            </signage>
+        </specialization>
+    </lb>
+
+    <lh>
+        <!-- initialise memory addresses -->
+        <instr>li t0, TEST_ADDRESS</instr>
+        <!-- store word -->
+        <instr>sw FocusReg, 0(t0)</instr>
+
+        <!-- forward FocusReg with TargetReg -->
+        <instr>mv TargetReg, FocusReg</instr>
+
+        <!-- initialise memory addresses -->
+        <reverse>li t0, TEST_ADDRESS</reverse>
+        <reverse>sub t1, t0, randValue</reverse>
+        <!-- load half word -->
+        <reverse>lh t1, randImmediate(t1)</reverse>
+        <!-- restore rest -->
+        <reverse>lw t0, 0(t0)</reverse>
+        <reverse>mv t2, t0</reverse> <!-- for highest bit -->
+        <reverse>srli t0, t0, 16</reverse>
+        <reverse>slli t0, t0, 16</reverse>
+
+        <!-- highest bit-->
+        <reverse>slli t2, t2, 16</reverse>
+        <reverse>srli t2, t2, 31</reverse>
+        <reverse>beqz t2, LH_SIGNED_BIT_ZERO_BRANCH_INDEX</reverse>
+
+        <!-- signed bit 1 -->
+        <reverse>li t2, 0xFFFF0000</reverse>
+        <reverse>sub t1, t1, t2</reverse>
+
+        <!-- signed bit zero -->
+        <reverse>LH_SIGNED_BIT_ZERO_BRANCH_INDEX:</reverse>
+        <reverse>add t0, t0, t1</reverse>
+
+        <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+        <reverse>beq t0, TargetReg, LH_NO_ERROR</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+        <reverse>LH_NO_ERROR:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <signage>signed/unsigned</signage>
+        <immediate>i12n</immediate>
+        <aligned>4</aligned>
+        <type>I</type>
+
+        <specialization>
+            <signage>
+                <unsigned>
+                    <!-- initialise memory addresses -->
+                    <instr>li t0, TEST_ADDRESS</instr>
+                    <!-- store word -->
+                    <instr>sw FocusReg, 0(t0)</instr>
+
+                    <!-- forward FocusReg with TargetReg -->
+                    <instr>mv TargetReg, FocusReg</instr>
+
+                    <!-- initialise memory addresses -->
+                    <reverse>li t0, TEST_ADDRESS</reverse>
+                    <reverse>sub t1, t0, randValue</reverse>
+                    <!-- load half word -->
+                    <reverse>lh t1, randImmediate(t1)</reverse>
+                    <!-- restore rest -->
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <reverse>srli t0, t0, 16</reverse>
+                    <reverse>slli t0, t0, 16</reverse>
+                    <reverse>add t0, t0, t1</reverse>
+                    <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+                    <reverse>beq t0, TargetReg, LH_NO_ERROR</reverse>
+                    <reverse>addi t0, t0, 1</reverse>
+                    <reverse>LH_NO_ERROR:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                </unsigned>
+            </signage>
+        </specialization>
+    </lh>
+
+    <lw>
+        <!-- initialise memory addresses -->
+        <instr>li t0, TEST_ADDRESS</instr>
+        <!-- store word -->
+        <instr>sw FocusReg, 0(t0)</instr>
+        <!-- forward FocusReg with TargetReg -->
+        <instr>mv TargetReg, FocusReg</instr>
+
+        <reverse>li t0, TEST_ADDRESS</reverse>
+        <reverse>sub t0, t0, randValue</reverse>
+        <reverse>lw t0, randValue(t0)</reverse>
+        <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+        <reverse>beq t0, TargetReg, LW_NO_ERROR</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+        <reverse>LW_NO_ERROR:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <pre-sequence-instr>li plaintemp, TEST_ADDRESS</pre-sequence-instr>
+        <sequence-instr>lw PlainTargetNewReg, 0(plaintemp)</sequence-instr>
+        <post-sequence-instr>sw PlainTargetReg, 0(plaintemp)
+        </post-sequence-instr> <!--  store sequence result instead of mod result, restore sequence result -->
+        <post-sequence-instr>mv PlainTargetReg, PlainTargetNewReg
+        </post-sequence-instr> <!-- restore correct TargetRegister for comparison -->
+
+        <signage>signed</signage>
+        <immediate>i12n</immediate>
+        <aligned>4</aligned>
+        <type>I</type>
+    </lw>
+
+    <sb>
+        <!-- initialise memory with zero-->
+        <instr>li t0, INIT_ADDRESS</instr>
+        <instr>sw zero, 0(t0)</instr>
+        <instr>addi t0, t0, 4</instr>
+        <instr>sw zero, 0(t0)</instr>
+        <instr>addi t0, t0, 4</instr>
+        <instr>sw zero, 0(t0)</instr>
+        <!-- initialise memory addresses -->
+        <instr>li t0, TEST_ADDRESS</instr>
+        <instr>sub t0, t0, randValue</instr>
+        <instr>li t1, ADDRESS</instr>
+        <!-- store byte -->
+        <instr>sb FocusReg, randValue(t0)</instr>
+        <!-- shift and safe rest of bits -->
+        <instr>srli t0, FocusReg, 8</instr>
+        <instr>slli t0, t0, 8</instr>
+        <instr>sw t0, 0(t1)</instr>
+        <!-- forward FocusReg with TargetReg -->
+        <instr>mv TargetReg, FocusReg</instr>
+
+        <!-- initialise memory addresses -->
+        <reverse>li t2, TEST_ADDRESS</reverse>
+        <reverse>li t1, ADDRESS</reverse>
+        <!-- restore safed Values -->
+        <reverse>lb t0, 0(t2)</reverse>
+        <reverse>lw t1, 0(t1)</reverse>
+        <reverse>slli t0, t0, 24</reverse>
+        <reverse>srli t0, t0, 24</reverse>
+        <reverse>add t0, t0, t1</reverse>
+
+        <!-- check for not zero values -->
+        <reverse>addi t2, t2, -1</reverse>
+        <reverse>lb t1, 0(t2)</reverse>
+        <reverse>bnez t1, SB_NOT_EQUAL_ZERO_BRANCH_INDEX</reverse>
+        <reverse>addi t2, t2, 2</reverse>
+        <reverse>lb t1, 0(t2)</reverse>
+        <reverse>bnez t1, SB_NOT_EQUAL_ZERO_BRANCH_INDEX</reverse>
+        <reverse>j SB_SET_TARGETREG_BRANCH_INDEX</reverse>
+        <reverse>SB_NOT_EQUAL_ZERO_BRANCH_INDEX:</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+
+        <reverse>SB_SET_TARGETREG_BRANCH_INDEX:</reverse>
+        <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+        <reverse>beq t0, TargetReg, SB_NO_ERROR</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+        <reverse>SB_NO_ERROR:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <signage>signed</signage>
+        <immediate>i12n</immediate>
+        <aligned>1</aligned>
+        <type>S</type>
+    </sb>
+
+    <sh>
+        <!-- initialise memory with zero-->
+        <instr>li t0, INIT_ADDRESS</instr>
+        <instr>sw zero, 0(t0)</instr>
+        <instr>addi t0, t0, 4</instr>
+        <instr>sw zero, 0(t0)</instr>
+        <instr>addi t0, t0, 4</instr>
+        <instr>sw zero, 0(t0)</instr>
+        <!-- initialise memory addresses -->
+        <instr>li t0, TEST_ADDRESS</instr>
+
+        <instr>sub t0, t0, randValue</instr>
+        <instr>li t1, ADDRESS</instr>
+        <!-- store half word (16bit)  -->
+        <instr>sh FocusReg, randValue(t0)</instr>
+        <!-- shift and safe rest of bits -->
+        <instr>srli t0, FocusReg, 16</instr>
+        <instr>slli t0, t0, 16</instr>
+        <instr>sw t0, 0(t1)</instr>
+        <!-- forward FocusReg with TargetReg -->
+        <instr>mv TargetReg, FocusReg</instr>
+
+        <!-- initialise memory addresses -->
+        <reverse>li t2, TEST_ADDRESS</reverse>
+        <reverse>li t1, ADDRESS</reverse>
+        <!-- safed Values -->
+        <reverse>lh t0, 0(t2)</reverse>
+        <reverse>lw t1, 0(t1)</reverse>
+        <reverse>slli t0, t0, 16</reverse>
+        <reverse>srli t0, t0, 16</reverse>
+        <reverse>add t0, t0, t1</reverse>
+
+        <!-- check for not zero values -->
+        <reverse>addi t2, t2, -2</reverse>
+        <reverse>lh t1, 0(t2)</reverse>
+        <reverse>bnez t1, SH_NOT_EQUAL_ZERO_BRANCH_INDEX</reverse>
+        <reverse>addi t2, t2, 4</reverse>
+        <reverse>lh t1, 0(t2)</reverse>
+        <reverse>bnez t1, SH_NOT_EQUAL_ZERO_BRANCH_INDEX</reverse>
+        <reverse>j SH_SET_TARGETREG_BRANCH_INDEX</reverse>
+        <reverse>SH_NOT_EQUAL_ZERO_BRANCH_INDEX:</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+
+        <reverse>SH_SET_TARGETREG_BRANCH_INDEX:</reverse>
+
+        <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+        <reverse>beq t0, TargetReg, SH_NO_ERROR</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+        <reverse>SH_NO_ERROR:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <signage>signed</signage>
+        <immediate>i12n</immediate>
+        <aligned>2</aligned>
+        <type>S</type>
+    </sh>
+
+    <sw>
+        <!-- initialise memory addresses -->
+        <instr>li t0, TEST_ADDRESS</instr>
+        <instr>sub t0, t0, randValue</instr>
+        <!-- store word -->
+        <instr>sw FocusReg, randValue(t0)</instr>
+        <!-- forward FocusReg with TargetReg -->
+        <instr>mv TargetReg, FocusReg</instr>
+
+        <reverse>li t0, TEST_ADDRESS</reverse>
+        <reverse>sub t0, t0, randValue</reverse>
+        <reverse>lw t0, randImmediate(t0)</reverse>
+
+        <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
+        <reverse>beq t0, TargetReg, SW_NO_ERROR</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+        <reverse>SW_NO_ERROR:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <pre-sequence-instr>li plaintemp, TEST_ADDRESS</pre-sequence-instr>
+        <sequence-instr>sw FocusSequenceReg, 0(plaintemp)</sequence-instr>
+
+        <simd>None</simd>
+        <signage>signed</signage>
+        <saturation>None</saturation>
+        <conditional>None</conditional>
+        <immediate>i12n</immediate>
+        <aligned>4</aligned>
+        <type>S</type>
+    </sw>
+
+    <!-- Info: Control transfer instructions -->
+
+    <beq>
+        <!-- Question: FocusReg and randomValue almost never equal -->
+        <instr>addi t0, FocusReg, -1</instr>
+        <instr>beq FocusReg, randValue, BEQ_EQUAL_BRANCH_INDEX</instr>
+        <!-- check, if beq works -->
+        <instr>bne FocusReg, randValue, BEQ_RESTORE_FOCUSREG_BRANCH_INDEX</instr>
+        <instr>j BEQ_SET_TARGETREG_BRANCH_INDEX</instr> <!-- is equal but should not be equal -->
+        <instr>BEQ_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>BEQ_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>j BEQ_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>BEQ_EQUAL_BRANCH_INDEX:</reverse>
+        <reverse>bne FocusReg, randValue, BEQ_SET_TARGETREG_BRANCH_INDEX
+        </reverse> <!-- is not equal but should be equal -->
+        <reverse>j BEQ_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+
+        <reverse>BEQ_END_REV_BRANCH_INDEX:</reverse>
+
+        <signage>signed</signage>
+        <type>SB</type>
+    </beq>
+
+    <bne>
+        <!-- Question: FocusReg and randomValue almost never equal -->
+        <instr>addi t0, FocusReg, -1</instr>
+        <instr>bne FocusReg, randValue, BNE_NOT_EQUAL_BRANCH_INDEX</instr>
+        <!-- check, if bne works -->
+        <instr>beq FocusReg, randValue, BNE_RESTORE_FOCUSREG_BRANCH_INDEX</instr>
+        <instr>j BNE_SET_TARGETREG_BRANCH_INDEX</instr> <!-- is not equal but should be equal -->
+        <instr>BNE_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>BNE_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>j BNE_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>BNE_NOT_EQUAL_BRANCH_INDEX:</reverse>
+        <reverse>beq FocusReg, randValue, BNE_SET_TARGETREG_BRANCH_INDEX
+        </reverse> <!-- is equal but should not be equal -->
+        <reverse>j BNE_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+
+        <reverse>BNE_END_REV_BRANCH_INDEX:</reverse>
+
+        <signage>signed</signage>
+        <type>SB</type>
+    </bne>
+
+    <blt>
+        <instr>addi t0, FocusReg, -1</instr>
+        <instr>slt t1, FocusReg, randValue</instr>
+        <instr>blt FocusReg, randValue, BLT_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX</instr>
+        <!-- check, if beq works -->
+        <!-- slt should be 0-->
+        <instr>beqz t1, BLT_RESTORE_FOCUSREG_BRANCH_INDEX</instr>
+        <instr>j BLT_SET_TARGETREG_BRANCH_INDEX</instr> <!-- is not 0-->
+        <instr>BLT_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>BLT_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>j BLT_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>BLT_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX:</reverse>
+        <!-- slt should be 1 -->
+        <reverse>li t2, 1</reverse>
+        <reverse>beq t1, t2, BLT_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+        <reverse>j BLT_SET_TARGETREG_BRANCH_INDEX</reverse> <!-- is not 1 -->
+
+        <reverse>BLT_END_REV_BRANCH_INDEX:</reverse>
+
+        <signage>signed/unsigned</signage>
+        <type>SB</type>
+        <specialization>
+            <signage>
+                <unsigned>
+                    <instr>addi t0, FocusReg, -1</instr>
+                    <instr>sltu t1, FocusReg, randValue</instr>
+                    <instr>blt FocusReg, randValue, BLT_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX</instr>
+                    <!-- check, if beq works -->
+                    <!-- slt should be 0-->
+                    <instr>beqz t1, BLT_RESTORE_FOCUSREG_BRANCH_INDEX</instr>
+                    <instr>j BLT_SET_TARGETREG_BRANCH_INDEX</instr> <!-- is not 0-->
+                    <instr>BLT_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+                    <instr>addi t0, t0, 1</instr>
+                    <instr>BLT_SET_TARGETREG_BRANCH_INDEX:</instr>
+                    <instr>mv TargetReg, t0</instr>
+
+                    <reverse>j BLT_END_REV_BRANCH_INDEX</reverse>
+
+                    <reverse>BLT_FOCUSREG_SMALLER_RANDOMVAL_BRANCH_INDEX:</reverse>
+                    <!-- slt should be 1 -->
+                    <reverse>li t2, 1</reverse>
+                    <reverse>beq t1, t2, BLT_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>j BLT_SET_TARGETREG_BRANCH_INDEX</reverse> <!-- is not 1 -->
+
+                    <reverse>BLT_END_REV_BRANCH_INDEX:</reverse>
+                </unsigned>
+            </signage>
+        </specialization>
+    </blt>
+
+    <bge>
+        <instr>addi t0, FocusReg, -1</instr>
+        <instr>slt t1, FocusReg, randValue</instr>
+        <instr>bge FocusReg, randValue, BGE_FOCUSREG_GREATER_EQUAL_RANDOMVAL_BRANCH_INDEX</instr>
+        <!-- check, if bge works -->
+        <!-- slt should be 1-->
+        <instr>li t2, 1</instr>
+        <instr>beq t1, t2, BGE_RESTORE_FOCUSREG_BRANCH_INDEX</instr>
+        <instr>j BGE_SET_TARGETREG_BRANCH_INDEX</instr> <!-- is not 0-->
+        <instr>BGE_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>BGE_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>j BGE_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>BGE_FOCUSREG_GREATER_EQUAL_RANDOMVAL_BRANCH_INDEX:</reverse>
+        <!-- slt should be 0 -->
+        <reverse>beqz t1, BGE_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+        <reverse>j BGE_SET_TARGETREG_BRANCH_INDEX</reverse> <!-- is not 1 -->
+
+        <reverse>BGE_END_REV_BRANCH_INDEX:</reverse>
+
+        <signage>signed/unsigned</signage>
+        <type>SB</type>
+
+        <specialization>
+            <signage>
+                <unsigned>
+                    <instr>addi t0, FocusReg, -1</instr>
+                    <instr>sltu t1, FocusReg, randValue</instr>
+                    <instr>bge FocusReg, randValue, BGE_FOCUSREG_GREATER_EQUAL_RANDOMVAL_BRANCH_INDEX</instr>
+                    <!-- check, if bge works -->
+                    <!-- slt should be 1-->
+                    <instr>li t2, 1</instr>
+                    <instr>beq t1, t2, BGE_RESTORE_FOCUSREG_BRANCH_INDEX</instr>
+                    <instr>j BGE_SET_TARGETREG_BRANCH_INDEX</instr> <!-- is not 0-->
+                    <instr>BGE_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+                    <instr>addi t0, t0, 1</instr>
+                    <instr>BGE_SET_TARGETREG_BRANCH_INDEX:</instr>
+                    <instr>mv TargetReg, t0</instr>
+
+                    <reverse>j BGE_END_REV_BRANCH_INDEX</reverse>
+
+                    <reverse>BGE_FOCUSREG_GREATER_EQUAL_RANDOMVAL_BRANCH_INDEX:</reverse>
+                    <!-- slt should be 0 -->
+                    <reverse>beqz t1, BGE_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>j BGE_SET_TARGETREG_BRANCH_INDEX</reverse> <!-- is not 1 -->
+
+                    <reverse>BGE_END_REV_BRANCH_INDEX:</reverse>
+                </unsigned>
+            </signage>
+        </specialization>
+    </bge>
+
+
+    <jal>
+        <instr>addi t0, FocusReg, -1</instr>
+        <instr>auipc t1, 0</instr>
+        <instr>jal t2, JAL_BRANCH_BRANCH_INDEX</instr>
+        <!-- error if jal not take branch -->
+        <instr>beqz zero, JAL_SET_TARGETREG_BRANCH_INDEX</instr>
+        <instr>JAL_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>JAL_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>beqz zero, JAL_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>JAL_BRANCH_BRANCH_INDEX:</reverse> <!-- branch taken-->
+        <!--  check if pc was stored right -->
+
+        <reverse>addi t1, t1, 8</reverse>
+        <reverse>beq t1, t2, JAL_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+        <reverse>beqz zero, JAL_SET_TARGETREG_BRANCH_INDEX</reverse>
+
+        <reverse>JAL_END_REV_BRANCH_INDEX:</reverse>
+
+
+        <signage>signed</signage>
+        <type>UJ</type>
+    </jal>
+
+    <jalr>
+        <instr>addi t0, FocusReg, -1</instr>
+        <!-- get adress for branch -->
+        <instr>la t1, JAL_BRANCH_BRANCH_INDEX</instr>
+        <instr>sub t1, t1, randValue</instr>
+        <!-- safe current pc -->
+        <instr>auipc t2, 0</instr>
+        <instr>jalr t1, t1, randValue</instr>
+        <!-- error if jal not take branch -->
+        <instr>j JAL_SET_TARGETREG_BRANCH_INDEX</instr>
+        <instr>JAL_RESTORE_FOCUSREG_BRANCH_INDEX:</instr>
+        <instr>addi t0, t0, 1</instr>
+        <instr>JAL_SET_TARGETREG_BRANCH_INDEX:</instr>
+        <instr>mv TargetReg, t0</instr>
+
+        <reverse>j JAL_END_REV_BRANCH_INDEX</reverse>
+
+        <reverse>JAL_BRANCH_BRANCH_INDEX:</reverse> <!-- branch taken-->
+        <!--  check if pc was stored right -->
+
+        <reverse>addi t2, t2, 8</reverse>
+        <reverse>beq t1, t2, JAL_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+        <reverse>j JAL_SET_TARGETREG_BRANCH_INDEX</reverse>
+
+        <reverse>JAL_END_REV_BRANCH_INDEX:</reverse>
+
+        <pre-sequence-instr>li t0, 0x2</pre-sequence-instr>
+        <pre-sequence-instr>la plaintemp, SEQUENCE_SUCCESS_BRANCH_INDEX</pre-sequence-instr>
+        <pre-sequence-instr>sub plaintemp, plaintemp, t0</pre-sequence-instr>
+
+        <sequence-instr>jalr plaintemp, plaintemp, 0x2</sequence-instr>
+        <sequence-instr>addi PlainTargetReg, FocusSequenceReg, 5</sequence-instr> <!-- destroy instruction -->
+        <sequence-instr>SEQUENCE_SUCCESS_BRANCH_INDEX:</sequence-instr>
+
+
+        <sequence-instr-icache>jalr plaintemp, plaintemp, 0x2</sequence-instr-icache>
+        <sequence-instr-icache>addi TargetReg, FocusReg, 5
+        </sequence-instr-icache> <!-- i cache miss repetition instruction -->
+        <sequence-instr-icache>SEQUENCE_SUCCESS_BRANCH_INDEX:</sequence-instr-icache>
+
+
+        <signage>signed</signage>
+        <immediate>i12n</immediate>
+        <type>UJ</type>
+        <icacheMiss></icacheMiss> <!-- if exists, is an icache miss generator candidate-->
+    </jalr>
+
+    <nop>
+        <instr>nop</instr>
+        <sequence-instr>nop</sequence-instr>
+        <reverse>nop</reverse>
+
+        <signage>signed</signage>
+        <immediate>None</immediate>
+        <switch>None/true</switch>
+        <type>R</type>
+    </nop>
+
+    <!-- Info: RV32M instructions -->
+
+    <mul>
+        <!-- store FocusReg -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+
+        <instr>mul TargetReg, FocusReg, randValue</instr>
+
+        <!-- load FocusReg -->
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <!-- result -->
+        <reverse>mv t1, zero</reverse>
+        <!-- Number of loop iterations-->
+        <reverse>li t2, 32</reverse>
+        <!-- place of multiplier used in loop step -->
+        <reverse>li t3, 1</reverse>
+        <!-- places randValue is shifted in loop step -->
+        <reverse>mv t4, zero</reverse>
+
+        <reverse>j MUL_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+        <reverse>MUL_LOOP_BRANCH_INDEX:</reverse>
+        <reverse>and t5, t0, t3</reverse>
+        <!-- only multiply if  place of multiplier is one -->
+        <reverse>beq t5, t3, MUL_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+        <!-- update counters -->
+        <reverse>MUL_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+        <reverse>slli t3, t3, 1</reverse>
+        <reverse>addi t4, t4, 1</reverse>
+        <reverse>j MUL_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+        <reverse>MUL_EMULATE_MUL_BRANCH_INDEX:</reverse>
+        <!-- emulated multiplication -->
+        <reverse>sll t5, randValue, t4</reverse>
+        <reverse>add t1, t1, t5</reverse>
+        <reverse>j MUL_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+
+        <reverse>MUL_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+        <reverse>blt t4, t2, MUL_LOOP_BRANCH_INDEX</reverse>
+
+        <!-- compare result of mul and emualted mul -->
+
+        <reverse>beq TargetReg, t1, MUL_SET_TARGET_REG_BRANCH_INDEX</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+
+        <reverse>MUL_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+        <signage>signed</signage>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <switch>
+                <true>
+                    <!-- store FocusReg -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+
+                    <instr>mul TargetReg, randValue, FocusReg</instr>
+
+                    <!-- load FocusReg -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- result -->
+                    <reverse>mv t1, zero</reverse>
+                    <!-- Number of loop iterations-->
+                    <reverse>li t2, 32</reverse>
+                    <!-- place of multiplier used in loop step -->
+                    <reverse>li t3, 1</reverse>
+                    <!-- places randValue is shifted in loop step -->
+                    <reverse>mv t4, zero</reverse>
+
+                    <reverse>j MUL_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MUL_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>and t5, randValue, t3</reverse>
+                    <!-- only multiply if  place of multiplier is one -->
+                    <reverse>beq t5, t3, MUL_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+                    <!-- update counters -->
+                    <reverse>MUL_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+                    <reverse>slli t3, t3, 1</reverse>
+                    <reverse>addi t4, t4, 1</reverse>
+                    <reverse>j MUL_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MUL_EMULATE_MUL_BRANCH_INDEX:</reverse>
+                    <!-- emulated multiplication -->
+                    <reverse>sll t5, t0, t4</reverse>
+                    <reverse>add t1, t1, t5</reverse>
+                    <reverse>j MUL_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+
+                    <reverse>MUL_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>blt t4, t2, MUL_LOOP_BRANCH_INDEX</reverse>
+
+                    <!-- compare result of mul and emualted mul -->
+
+                    <reverse>beq TargetReg, t1, MUL_SET_TARGET_REG_BRANCH_INDEX</reverse>
+                    <reverse>addi t0, t0, 1</reverse>
+
+                    <reverse>MUL_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </mul>
+
+    <mulh>
+        <!-- store FocusReg -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>sw FocusReg, 0(t0)</instr>
+
+        <instr>mulh TargetReg, FocusReg, randValue</instr>
+
+        <!-- load FocusReg -->
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <reverse>mv t1, zero</reverse> <!-- result low-->
+        <reverse>mv t2, zero</reverse> <!-- result high-->
+        <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+        <!-- loop low-->
+        <reverse>j MULH_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+        <reverse>MULH_LOOP_BRANCH_INDEX:</reverse>
+        <!-- place of multiplier used in loop step -->
+        <reverse>li t4, 1</reverse>
+        <reverse>sll t4, t4, t3</reverse>
+        <reverse>and t5, t0, t4</reverse>
+        <!-- only multiply if  place of multiplier is one -->
+        <reverse>beq t5, t4, MULH_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+        <!-- update counters -->
+        <reverse>MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+        <reverse>addi t3, t3, 1</reverse>
+        <reverse>j MULH_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+        <reverse>MULH_EMULATE_MUL_BRANCH_INDEX:</reverse>
+        <!-- emulated multiplication -->
+        <reverse>mv t4, t1</reverse>
+        <reverse>sll t5, randValue, t3</reverse>
+        <reverse>add t1, t4, t5</reverse>
+        <!-- controll overflow -->
+        <reverse>bgeu t1, t4 MULH_NO_OVERFLOW_BRANCH_INDEX</reverse>
+        <!-- if overflow, add 1 to higher result -->
+        <reverse>addi t2, t2, 1</reverse>
+        <reverse>MULH_NO_OVERFLOW_BRANCH_INDEX:</reverse>
+        <!-- add higher bits shifted away to higher result -->
+        <reverse>beqz t3, MULH_COUNTER_ZERO_BRANCH_INDEX</reverse> <!-- only if counter is not zero -->
+        <reverse>li t4, 32</reverse>
+        <reverse>sub t4, t4, t3</reverse>
+        <reverse>sra t4, randValue, t4</reverse>
+        <reverse>add t2, t2, t4</reverse>
+        <reverse>j MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+        <reverse>MULH_COUNTER_ZERO_BRANCH_INDEX:</reverse>
+        <!-- if MSB of randValue = 1 add 0xFFFFFFFF to high register-->
+        <reverse>li t4, 1</reverse>
+        <reverse>slli t4, t4, 31</reverse>
+        <reverse>and t5, randValue, t4</reverse>
+        <reverse>bne t5, t4, MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+        <reverse>addi t2, t2, 0xFFFFFFFF</reverse>
+        <reverse>j MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+        <reverse>MULH_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+        <reverse>li t4, 32</reverse>
+        <reverse>blt t3, t4, MULH_LOOP_BRANCH_INDEX</reverse>
+
+
+        <!-- add to higher bit for sign-extended bits -->
+        <!-- controll if MSB = 1 -->
+        <reverse>li t4, 1</reverse>
+        <reverse>slli t4, t4, 31</reverse>
+        <reverse>and t5, t0, t4</reverse>
+        <reverse>bne t5, t4, MULH_MSB_ZERO_BRANCH_INDEX</reverse>
+
+        <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+        <!-- loop high-->
+
+        <reverse>MULH_LOOP_HIGH_BRANCH_INDEX:</reverse>
+        <!-- emulated multiplication -->
+        <reverse>sll t4, randValue, t3</reverse>
+        <reverse>add t2, t2, t4</reverse>
+        <!-- update counter -->
+        <reverse>addi t3, t3, 1</reverse>
+        <!-- check exit condition -->
+        <reverse>li t4, 32</reverse>
+        <reverse>blt t3, t4, MULH_LOOP_HIGH_BRANCH_INDEX</reverse>
+
+        <reverse>MULH_MSB_ZERO_BRANCH_INDEX:</reverse>
+
+        <!-- compare result of mulh and emualted mulh -->
+        <reverse>beq TargetReg, t2, MULH_SET_TARGET_REG_BRANCH_INDEX</reverse>
+        <reverse>addi t0, t0, 1</reverse>
+
+        <reverse>MULH_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+        <reverse>mv TargetReg, t0</reverse>
+
+
+        <signage>signed/unsigned/signed-unsigned</signage>
+        <switch>None/true</switch>
+        <type>R</type>
+        <specialization>
+            <signage>
+                <unsigned>
+                    <!-- store FocusReg -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+
+                    <instr>mulh TargetReg, FocusReg, randValue</instr>
+
+                    <!-- load FocusReg -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- result low-->
+                    <reverse>mv t1, zero</reverse>
+                    <!-- result high-->
+                    <reverse>mv t2, zero</reverse>
+                    <!-- number of loop step/counter-->
+                    <reverse>mv t3, zero</reverse>
+
+                    <reverse>j MULHU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MULHU_LOOP_BRANCH_INDEX:</reverse>
+                    <!-- place of multiplier used in loop step -->
+                    <reverse>li t4, 1</reverse>
+                    <reverse>sll t4, t4, t3</reverse>
+                    <reverse>and t5, t0, t4</reverse>
+                    <!-- only multiply if  place of multiplier is one -->
+                    <reverse>beq t5, t4, MULHU_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+                    <!-- update counters -->
+                    <reverse>MULHU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+                    <reverse>addi t3, t3, 1</reverse>
+                    <reverse>j MULHU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MULHU_EMULATE_MUL_BRANCH_INDEX:</reverse>
+                    <!-- emulated multiplication -->
+                    <reverse>mv t4, t1</reverse>
+                    <reverse>sll t5, randValue, t3</reverse>
+                    <reverse>add t1, t4, t5</reverse>
+                    <!-- controll overflow -->
+                    <reverse>bgeu t1, t4 MULHU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                    <!-- if overflow, add 1 to higher result -->
+                    <reverse>addi t2, t2, 1</reverse>
+                    <reverse>MULHU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
+                    <!-- add higher bits shifted away to higher result -->
+                    <reverse>beqz t3, MULHU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse> <!-- only if counter is not zero -->
+                    <reverse>li t4, 32</reverse>
+                    <reverse>sub t4, t4, t3</reverse>
+                    <reverse>srl t4, randValue, t4</reverse>
+                    <reverse>add t2, t2, t4</reverse>
+                    <reverse>j MULHU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+
+                    <reverse>MULHU_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>li t4, 32</reverse>
+                    <reverse>blt t3, t4, MULHU_LOOP_BRANCH_INDEX</reverse>
+
+                    <!-- compare result of mulh and emualted mulh -->
+
+                    <reverse>beq TargetReg, t2, MULHU_SET_TARGET_REG_BRANCH_INDEX</reverse>
+                    <reverse>addi t0, t0, 1</reverse>
+
+                    <reverse>MULHU_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                    <specialization>
+                        <switch>
+                            <true>
+                                <!-- store FocusReg -->
+                                <instr>li t0, ADDRESS</instr>
+                                <instr>sw FocusReg, 0(t0)</instr>
+
+                                <instr>mulh TargetReg, randValue, FocusReg</instr>
+
+                                <!-- load FocusReg -->
+                                <reverse>li t0, ADDRESS</reverse>
+                                <reverse>lw t0, 0(t0)</reverse>
+                                <!-- result low-->
+                                <reverse>mv t1, zero</reverse>
+                                <!-- result high-->
+                                <reverse>mv t2, zero</reverse>
+                                <!-- number of loop step/counter-->
+                                <reverse>mv t3, zero</reverse>
+
+                                <reverse>j MULHU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                                <reverse>MULHU_LOOP_BRANCH_INDEX:</reverse>
+                                <!-- place of multiplier used in loop step -->
+                                <reverse>li t4, 1</reverse>
+                                <reverse>sll t4, t4, t3</reverse>
+                                <reverse>and t5, randValue, t4</reverse>
+                                <!-- only multiply if  place of multiplier is one -->
+                                <reverse>beq t5, t4, MULHU_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+                                <!-- update counters -->
+                                <reverse>MULHU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+                                <reverse>addi t3, t3, 1</reverse>
+                                <reverse>j MULHU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                                <reverse>MULHU_EMULATE_MUL_BRANCH_INDEX:</reverse>
+                                <!-- emulated multiplication -->
+                                <reverse>mv t4, t1</reverse>
+                                <reverse>sll t5, t0, t3</reverse>
+                                <reverse>add t1, t4, t5</reverse>
+                                <!-- controll overflow -->
+                                <reverse>bgeu t1, t4 MULHU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                                <!-- if overflow, add 1 to higher result -->
+                                <reverse>addi t2, t2, 1</reverse>
+                                <reverse>MULHU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
+                                <!-- add higher bits shifted away to higher result -->
+                                <reverse>beqz t3, MULHU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse> <!-- only if counter is not zero -->
+                                <reverse>li t4, 32</reverse>
+                                <reverse>sub t4, t4, t3</reverse>
+                                <reverse>srl t4, t0, t4</reverse>
+                                <reverse>add t2, t2, t4</reverse>
+                                <reverse>j MULHU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+
+                                <reverse>MULHU_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+                                <reverse>li t4, 32</reverse>
+                                <reverse>blt t3, t4, MULHU_LOOP_BRANCH_INDEX</reverse>
+
+                                <!-- compare result of mulh and emualted mulh -->
+
+                                <reverse>beq TargetReg, t2, MULHU_SET_TARGET_REG_BRANCH_INDEX</reverse>
+                                <reverse>addi t0, t0, 1</reverse>
+
+                                <reverse>MULHU_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+                                <reverse>mv TargetReg, t0</reverse>
+                            </true>
+                        </switch>
+                    </specialization>
+                </unsigned>
+                <signed-unsigned>
+                    <!-- store FocusReg -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+
+                    <instr>mulh TargetReg, FocusReg, randValue</instr>
+
+                    <!-- load FocusReg -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <reverse>mv t1, zero</reverse> <!-- result low-->
+                    <reverse>mv t2, zero</reverse> <!-- result high-->
+                    <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+                    <!-- loop low-->
+                    <reverse>j MULHSU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MULHSU_LOOP_BRANCH_INDEX:</reverse>
+                    <!-- place of multiplier used in loop step -->
+                    <reverse>li t4, 1</reverse>
+                    <reverse>sll t4, t4, t3</reverse>
+                    <reverse>and t5, t0, t4</reverse>
+                    <!-- only multiply if  place of multiplier is one -->
+                    <reverse>beq t5, t4, MULHSU_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+                    <!-- update counters -->
+                    <reverse>MULHSU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+                    <reverse>addi t3, t3, 1</reverse>
+                    <reverse>j MULHSU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MULHSU_EMULATE_MUL_BRANCH_INDEX:</reverse>
+                    <!-- emulated multiplication -->
+                    <reverse>mv t4, t1</reverse>
+                    <reverse>sll t5, randValue, t3</reverse>
+                    <reverse>add t1, t4, t5</reverse>
+                    <!-- controll overflow -->
+                    <reverse>bgeu t1, t4 MULHSU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                    <!-- if overflow, add 1 to higher result -->
+                    <reverse>addi t2, t2, 1</reverse>
+                    <reverse>MULHSU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
+                    <!-- add higher bits shifted away to higher result -->
+                    <reverse>beqz t3, MULHSU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse> <!-- only if counter is not zero -->
+                    <reverse>li t4, 32</reverse>
+                    <reverse>sub t4, t4, t3</reverse>
+                    <reverse>srl t4, randValue, t4</reverse>
+                    <reverse>add t2, t2, t4</reverse>
+                    <reverse>j MULHSU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+                    <reverse>MULHSU_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>li t4, 32</reverse>
+                    <reverse>blt t3, t4, MULHSU_LOOP_BRANCH_INDEX</reverse>
+
+
+                    <!-- add to higher bit for sign-extended bits -->
+                    <!-- controll if MSB = 1 -->
+                    <reverse>li t4, 1</reverse>
+                    <reverse>slli t4, t4, 31</reverse>
+                    <reverse>and t5, t0, t4</reverse>
+                    <reverse>bne t5, t4, MULHSU_MSB_ZERO_BRANCH_INDEX</reverse>
+
+                    <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+                    <!-- loop high-->
+
+                    <reverse>MULHSU_LOOP_HIGH_BRANCH_INDEX:</reverse>
+                    <!-- emulated multiplication -->
+                    <reverse>sll t4, randValue, t3</reverse>
+                    <reverse>add t2, t2, t4</reverse>
+                    <!-- update counter -->
+                    <reverse>addi t3, t3, 1</reverse>
+                    <!-- check exit condition -->
+                    <reverse>li t4, 32</reverse>
+                    <reverse>blt t3, t4, MULHSU_LOOP_HIGH_BRANCH_INDEX</reverse>
+
+                    <reverse>MULHSU_MSB_ZERO_BRANCH_INDEX:</reverse>
+
+                    <!-- compare result of mulh and emualted mulh -->
+                    <reverse>beq TargetReg, t2, MULHSU_SET_TARGET_REG_BRANCH_INDEX</reverse>
+                    <reverse>addi t0, t0, 1</reverse>
+
+                    <reverse>MULHSU_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                    <specialization>
+                        <switch>
+                            <true>
+                                <!-- store FocusReg -->
+                                <instr>li t0, ADDRESS</instr>
+                                <instr>sw FocusReg, 0(t0)</instr>
+
+                                <instr>mulh TargetReg, randValue, FocusReg</instr>
+
+                                <!-- load FocusReg -->
+                                <reverse>li t0, ADDRESS</reverse>
+                                <reverse>lw t0, 0(t0)</reverse>
+                                <reverse>mv t1, zero</reverse> <!-- result low-->
+                                <reverse>mv t2, zero</reverse> <!-- result high-->
+                                <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+                                <!-- loop low-->
+                                <reverse>j MULHSU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                                <reverse>MULHSU_LOOP_BRANCH_INDEX:</reverse>
+                                <!-- place of multiplier used in loop step -->
+                                <reverse>li t4, 1</reverse>
+                                <reverse>sll t4, t4, t3</reverse>
+                                <reverse>and t5, randValue, t4</reverse>
+                                <!-- only multiply if  place of multiplier is one -->
+                                <reverse>beq t5, t4, MULHSU_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+                                <!-- update counters -->
+                                <reverse>MULHSU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+                                <reverse>addi t3, t3, 1</reverse>
+                                <reverse>j MULHSU_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                                <reverse>MULHSU_EMULATE_MUL_BRANCH_INDEX:</reverse>
+                                <!-- emulated multiplication -->
+                                <reverse>mv t4, t1</reverse>
+                                <reverse>sll t5, t0, t3</reverse>
+                                <reverse>add t1, t4, t5</reverse>
+                                <!-- controll overflow -->
+                                <reverse>bgeu t1, t4 MULHSU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                                <!-- if overflow, add 1 to higher result -->
+                                <reverse>addi t2, t2, 1</reverse>
+                                <reverse>MULHSU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
+                                <!-- add higher bits shifted away to higher result -->
+                                <reverse>beqz t3, MULHSU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse> <!-- only if counter is not zero -->
+                                <reverse>li t4, 32</reverse>
+                                <reverse>sub t4, t4, t3</reverse>
+                                <reverse>srl t4, t0, t4</reverse>
+                                <reverse>add t2, t2, t4</reverse>
+                                <reverse>j MULHSU_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+                                <reverse>MULHSU_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+                                <reverse>li t4, 32</reverse>
+                                <reverse>blt t3, t4, MULHSU_LOOP_BRANCH_INDEX</reverse>
+
+
+                                <!-- add to higher bit for sign-extended bits -->
+                                <!-- controll if MSB = 1 -->
+                                <reverse>li t4, 1</reverse>
+                                <reverse>slli t4, t4, 31</reverse>
+                                <reverse>and t5, randValue, t4</reverse>
+                                <reverse>bne t5, t4, MULHSU_MSB_ZERO_BRANCH_INDEX</reverse>
+
+                                <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+                                <!-- loop high-->
+
+                                <reverse>MULHSU_LOOP_HIGH_BRANCH_INDEX:</reverse>
+                                <!-- emulated multiplication -->
+                                <reverse>sll t4, t0, t3</reverse>
+                                <reverse>add t2, t2, t4</reverse>
+                                <!-- update counter -->
+                                <reverse>addi t3, t3, 1</reverse>
+                                <!-- check exit condition -->
+                                <reverse>li t4, 32</reverse>
+                                <reverse>blt t3, t4, MULHSU_LOOP_HIGH_BRANCH_INDEX</reverse>
+
+                                <reverse>MULHSU_MSB_ZERO_BRANCH_INDEX:</reverse>
+
+                                <!-- compare result of mulh and emualted mulh -->
+                                <reverse>beq TargetReg, t2, MULHSU_SET_TARGET_REG_BRANCH_INDEX</reverse>
+                                <reverse>addi t0, t0, 1</reverse>
+
+                                <reverse>MULHSU_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+                                <reverse>mv TargetReg, t0</reverse>
+                            </true>
+                        </switch>
+                    </specialization>
+                </signed-unsigned>
+            </signage>
+            <switch>
+                <true>
+                    <!-- store FocusReg -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+
+                    <instr>mulh TargetReg, randValue, FocusReg</instr>
+
+                    <!-- load FocusReg -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <reverse>mv t1, zero</reverse> <!-- result low-->
+                    <reverse>mv t2, zero</reverse> <!-- result high-->
+                    <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+                    <!-- loop low-->
+                    <reverse>j MULH_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MULH_LOOP_BRANCH_INDEX:</reverse>
+                    <!-- place of multiplier used in loop step -->
+                    <reverse>li t4, 1</reverse>
+                    <reverse>sll t4, t4, t3</reverse>
+                    <reverse>and t5, randValue, t4</reverse>
+                    <!-- only multiply if  place of multiplier is one -->
+                    <reverse>beq t5, t4, MULH_EMULATE_MUL_BRANCH_INDEX</reverse>
+
+                    <!-- update counters -->
+                    <reverse>MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX:</reverse>
+                    <reverse>addi t3, t3, 1</reverse>
+                    <reverse>j MULH_CONTROL_EXIT_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>MULH_EMULATE_MUL_BRANCH_INDEX:</reverse>
+                    <!-- emulated multiplication -->
+                    <reverse>mv t4, t1</reverse>
+                    <reverse>sll t5, t0, t3</reverse>
+                    <reverse>add t1, t4, t5</reverse>
+                    <!-- controll overflow -->
+                    <reverse>bgeu t1, t4 MULH_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                    <!-- if overflow, add 1 to higher result -->
+                    <reverse>addi t2, t2, 1</reverse>
+                    <reverse>MULH_NO_OVERFLOW_BRANCH_INDEX:</reverse>
+                    <!-- add higher bits shifted away to higher result -->
+                    <reverse>beqz t3, MULH_COUNTER_ZERO_BRANCH_INDEX</reverse> <!-- only if counter is not zero -->
+                    <reverse>li t4, 32</reverse>
+                    <reverse>sub t4, t4, t3</reverse>
+                    <reverse>sra t4, t0, t4</reverse>
+                    <reverse>add t2, t2, t4</reverse>
+                    <reverse>j MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+                    <reverse>MULH_COUNTER_ZERO_BRANCH_INDEX:</reverse>
+                    <!-- if MSB of t0 = 1 add 0xFFFFFFFF to high register-->
+                    <reverse>li t4, 1</reverse>
+                    <reverse>slli t4, t4, 31</reverse>
+                    <reverse>and t5, t0, t4</reverse>
+                    <reverse>bne t5, t4, MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, 0xFFFFFFFF</reverse>
+                    <reverse>j MULH_CONTROL_UPDATE_COUNTER_BRANCH_INDEX</reverse>
+
+                    <reverse>MULH_CONTROL_EXIT_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>li t4, 32</reverse>
+                    <reverse>blt t3, t4, MULH_LOOP_BRANCH_INDEX</reverse>
+
+
+                    <!-- add to higher bit for sign-extended bits -->
+                    <!-- controll if MSB = 1 -->
+                    <reverse>li t4, 1</reverse>
+                    <reverse>slli t4, t4, 31</reverse>
+                    <reverse>and t5, randValue, t4</reverse>
+                    <reverse>bne t5, t4, MULH_MSB_ZERO_BRANCH_INDEX</reverse>
+
+                    <reverse>mv t3, zero</reverse> <!-- number of loop step/counter-->
+
+                    <!-- loop high-->
+
+                    <reverse>MULH_LOOP_HIGH_BRANCH_INDEX:</reverse>
+                    <!-- emulated multiplication -->
+                    <reverse>sll t4, t0, t3</reverse>
+                    <reverse>add t2, t2, t4</reverse>
+                    <!-- update counter -->
+                    <reverse>addi t3, t3, 1</reverse>
+                    <!-- check exit condition -->
+                    <reverse>li t4, 32</reverse>
+                    <reverse>blt t3, t4, MULH_LOOP_HIGH_BRANCH_INDEX</reverse>
+
+                    <reverse>MULH_MSB_ZERO_BRANCH_INDEX:</reverse>
+
+                    <!-- compare result of mulh and emualted mulh -->
+                    <reverse>beq TargetReg, t2, MULH_SET_TARGET_REG_BRANCH_INDEX</reverse>
+                    <reverse>addi t0, t0, 1</reverse>
+
+                    <reverse>MULH_SET_TARGET_REG_BRANCH_INDEX:</reverse>
+                    <reverse>mv TargetReg, t0</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </mulh>
+
+    <div>
+        <!-- store remainder -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>rem t1, FocusReg, randValue</instr>
+        <instr>sw t1, 0(t0)</instr>
+        <!-- div instruction -->
+        <instr>div TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>div PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <!-- divident = divisor x quotient + remainder -->
+        <reverse>mul t1, TargetReg, randValue</reverse>
+        <reverse>add TargetReg, t1, t0</reverse>
+
+        <signage>signed/unsigned</signage>
+        <switch>None/true</switch>
+        <type>R-M</type> <!-- multicycle-->
+        <special-immediates>0,1</special-immediates>
+
+
+        <specialization>
+            <signage>
+                <unsigned>
+                    <!-- store remainder -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>remu t1, FocusReg, randValue</instr>
+                    <instr>sw t1, 0(t0)</instr>
+                    <!-- div instruction -->
+                    <instr>div TargetReg, FocusReg, randValue</instr>
+
+                    <sequence-instr>div PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- divident = divisor x quotient + remainder -->
+                    <!-- divisor is limited to 32, so that the division through a loop does not consume exorbitant times-->
+                    <reverse>mul t1, TargetReg, randValue</reverse>
+                    <reverse>add TargetReg, t1, t0</reverse>
+                    <specialization>
+                        <switch>
+                            <true>
+                                <instr>li t0, ADDRESS</instr>
+                                <instr>li t2, 0x1F</instr>
+                                <instr>and t3, randValue, t2</instr>
+                                <instr>remu t1, t3, FocusReg</instr>
+                                <instr>sw t1, 0(t0)</instr>
+                                <instr>li t0, ADDRESS2</instr>
+                                <instr>sw FocusReg, 0(t0)</instr>
+                                <!-- div instruction -->
+                                <instr>div TargetReg, t3, FocusReg</instr>
+
+                                <pre-sequence-instr>li t2, 0x1F</pre-sequence-instr>
+                                <pre-sequence-instr>and plaintemp, randValue, t2</pre-sequence-instr>
+                                <sequence-instr>div PlainTargetReg, plaintemp, FocusSequenceReg</sequence-instr>
+
+                                <!-- restore remainder -->
+                                <reverse>li t0, ADDRESS</reverse>
+                                <reverse>lw t0, 0(t0)</reverse> <!-- remainder-->
+                                <reverse>li t2, 0x1F</reverse>
+                                <reverse>and t1, randValue, t2</reverse>
+                                <reverse>mv t4, t1</reverse>
+
+                                <!-- if divisor bigger then divident -->
+                                <reverse>beqz TargetReg, DIVU_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX</reverse>
+
+                                <!-- restore divisor -->
+                                <!-- (quotient - remainder) / divident = divisor and quotient - (divident * divisor) -remainder = 0   -->
+                                <!-- quotient -->
+                                <reverse>mv t2, zero</reverse>
+                                <reverse>sub t3, t1, t0</reverse>
+
+                                <reverse>DIVU_SWITCH_RESTORE_LOOP_BRANCH_INDEX:</reverse>
+                                <reverse>beqz t3, DIVU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                                <reverse>addi t2, t2, 1</reverse>
+                                <reverse>beqz t2, DIVU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                                <reverse>sub t1, t1, TargetReg</reverse>
+                                <reverse>sub t3, t1, t0</reverse>
+                                <reverse>j DIVU_SWITCH_RESTORE_LOOP_BRANCH_INDEX</reverse>
+
+                                <reverse>DIVU_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX:</reverse>
+                                <reverse>li t1, ADDRESS2</reverse>
+                                <reverse>lw t2, 0(t1)</reverse> <!-- remainder-->
+                                <!-- check if RandValue can be restored (if div worked right)-->
+                                <reverse>mul t1, TargetReg, t1</reverse>
+                                <reverse>add t0, t1, t0</reverse>
+
+                                <reverse>beq t0, t4, DIVU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                                <reverse>addi t2, t2, 1</reverse>
+
+                                <reverse>DIVU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX:</reverse>
+
+                                <reverse>mv TargetReg, t2</reverse>
+                            </true>
+                        </switch>
+                    </specialization>
+                </unsigned>
+            </signage>
+            <switch>
+                <true>
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>li t2, 0x1F</instr>
+                    <instr>and t3, randValue, t2</instr>
+                    <instr>rem t1, t3, FocusReg</instr>
+                    <instr>sw t1, 0(t0)</instr>
+                    <instr>li t0, ADDRESS2</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- check if divisor is negative -->
+                    <instr>li t4, 0x1</instr>
+                    <instr>bgt FocusReg, zero, DIV_SWITCH_POSITIVE_BRANCH_INDEX</instr>
+                    <!-- st negative flag -->
+                    <instr>li t4, 0x0</instr>
+                    <instr>DIV_SWITCH_POSITIVE_BRANCH_INDEX:</instr>
+                    <instr>li t5, ADDRESS3</instr>
+                    <instr>sw t4, 0(t5)</instr>
+                    <!-- div instruction -->
+                    <instr>div TargetReg, t3, FocusReg</instr>
+
+
+                    <pre-sequence-instr>li t2, 0x1F</pre-sequence-instr>
+                    <pre-sequence-instr>and plaintemp, randValue, t2</pre-sequence-instr>
+                    <sequence-instr>div PlainTargetReg, plaintemp, FocusSequenceReg</sequence-instr>
+
+                    <!-- restore remainder -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse> <!-- remainder-->
+                    <reverse>li t2, 0x1F</reverse>
+                    <reverse>and t1, randValue, t2</reverse>
+                    <reverse>mv t4, t1</reverse>
+
+                    <!-- if divisor bigger then divident -->
+                    <reverse>beqz TargetReg, DIV_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX</reverse>
+                    <!-- result is -1, is it a correct result? -->
+                    <reverse>bne t1, x0, DIV_REVERSE_SWITCH_CONTINUE_RESTORATION_BRANCH_INDEX</reverse>
+                    <reverse>li t4, -1</reverse>
+                    <reverse>beq TargetReg, t4, DIV_SWITCH_ZERO_DIV_BRANCH_INDEX</reverse>
+                    <reverse>DIV_REVERSE_SWITCH_CONTINUE_RESTORATION_BRANCH_INDEX:</reverse>
+
+                    <reverse>mv t4, t1</reverse>
+
+                    <!-- restore divisor -->
+                    <!-- (quotient - remainder) / divident = divisor and quotient - (divident * divisor) -remainder = 0   -->
+                    <!-- quotient -->
+
+                    <reverse>mv t2, zero</reverse>
+                    <reverse>sub t3, t1, t0</reverse>
+                    <!-- check for negative divisor handling -->
+                    <reverse>li t5, ADDRESS3</reverse>
+                    <reverse>lw t5, 0(t5)</reverse>
+                    <reverse>beqz t5, DIV_SWITCH_RESTORE_NEG_BRANCH_INDEX</reverse>
+                    <!-- restore positive divisor -->
+                    <reverse>DIV_SWITCH_RESTORE_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>beqz t3, DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, 1</reverse>
+                    <reverse>beqz t2, DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>sub t1, t1, TargetReg</reverse>
+                    <reverse>sub t3, t1, t0</reverse>
+                    <reverse>j DIV_SWITCH_RESTORE_LOOP_BRANCH_INDEX</reverse>
+
+                    <!-- restore negative divisor -->
+                    <reverse>DIV_SWITCH_RESTORE_NEG_BRANCH_INDEX:</reverse>
+                    <reverse>DIV_SWITCH_RESTORE_NEG_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>beqz t3, DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, -1</reverse>
+                    <reverse>beqz t2, DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>add t1, t1, TargetReg</reverse>
+                    <reverse>sub t3, t1, t0</reverse>
+                    <reverse>j DIV_SWITCH_RESTORE_NEG_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>DIV_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX:</reverse>
+                    <reverse>li t1, ADDRESS2</reverse>
+                    <reverse>lw t2, 0(t1)</reverse> <!-- remainder-->
+                    <!-- check if RandValue can be restored (if div worked right)-->
+                    <reverse>mul t1, TargetReg, t1</reverse>
+                    <reverse>add t0, t1, t0</reverse>
+
+                    <reverse>beq t0, t4, DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, 1</reverse>
+                    <reverse>j DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+
+                    <reverse>DIV_SWITCH_ZERO_DIV_BRANCH_INDEX:</reverse>
+                    <reverse>li t2, 0</reverse>
+
+                    <reverse>DIV_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX:</reverse>
+
+                    <reverse>mv TargetReg, t2</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </div>
+
+    <rem>
+        <!-- store divisor -->
+        <instr>li t0, ADDRESS</instr>
+        <instr>div t1, FocusReg, randValue</instr>
+        <instr>sw t1, 0(t0)</instr>
+        <!-- rem instruction-->
+        <instr>rem TargetReg, FocusReg, randValue</instr>
+
+        <sequence-instr>rem PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+        <reverse>li t0, ADDRESS</reverse>
+        <reverse>lw t0, 0(t0)</reverse>
+        <!-- divident = divisor x quotient + remainder -->
+        <reverse>mul t0, t0, randValue</reverse>
+        <reverse>add TargetReg, t0, TargetReg</reverse>
+
+        <signage>signed/unsigned</signage>
+        <switch>None/true</switch>
+        <type>R</type>
+
+        <specialization>
+            <signage>
+                <unsigned>
+                    <!-- store divisor -->
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>divu t1, FocusReg, randValue</instr>
+                    <instr>sw t1, 0(t0)</instr>
+                    <!-- rem instruction-->
+                    <instr>rem TargetReg, FocusReg, randValue</instr>
+
+                    <sequence-instr>rem PlainTargetReg, FocusSequenceReg, randValue</sequence-instr>
+
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse>
+                    <!-- divident = divisor x quotient + remainder -->
+                    <reverse>mul t0, t0, randValue</reverse>
+                    <reverse>add TargetReg, t0, TargetReg</reverse>
+                    <specialization>
+                        <switch>
+                            <true>
+                                <instr>li t0, ADDRESS</instr>
+                                <instr>li t2, 0x1F</instr>
+                                <instr>and t3, randValue, t2</instr>
+                                <instr>divu t1, t3, FocusReg</instr>
+                                <instr>sw t1, 0(t0)</instr>
+                                <instr>li t0, ADDRESS2</instr>
+                                <instr>sw FocusReg, 0(t0)</instr>
+                                <!-- rem instruction -->
+                                <instr>rem TargetReg, t3, FocusReg</instr>
+
+                                <pre-sequence-instr>li t2, 0x1F</pre-sequence-instr>
+                                <pre-sequence-instr>and plaintemp, randValue, t2</pre-sequence-instr>
+                                <sequence-instr>rem PlainTargetReg, plaintemp, FocusSequenceReg</sequence-instr>
+
+                                <!-- restore quotient -->
+                                <reverse>li t0, ADDRESS</reverse>
+                                <reverse>lw t0, 0(t0)</reverse> <!-- divident-->
+                                <reverse>li t2, 0x1F</reverse>
+                                <reverse>and t1, randValue, t2</reverse>
+                                <reverse>mv t4, t1</reverse>
+
+                                <!-- if divisor bigger then divident -->
+                                <reverse>beqz t0, REMU_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX</reverse>
+
+                                <!-- restore divisor -->
+                                <!-- (quotient - remainder) / divident = divisor and quotient - (divident * divisor) - remainder = 0   -->
+                                <!-- quotient -->
+                                <reverse>mv t2, zero</reverse>
+                                <reverse>sub t3, t1, TargetReg</reverse>
+
+                                <reverse>REMU_SWITCH_RESTORE_LOOP_BRANCH_INDEX:</reverse>
+                                <reverse>beqz t3, REMU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                                <reverse>addi t2, t2, 1</reverse>
+                                <reverse>beqz t2, REMU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                                <reverse>sub t1, t1, t0</reverse>
+                                <reverse>sub t3, t1, TargetReg</reverse>
+                                <reverse>j REMU_SWITCH_RESTORE_LOOP_BRANCH_INDEX</reverse>
+
+                                <reverse>REMU_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX:</reverse>
+                                <reverse>li t1, ADDRESS2</reverse>
+                                <reverse>lw t2, 0(t1)</reverse> <!-- remainder-->
+                                <!-- check if RandValue can be restored (if div worked right)-->
+                                <reverse>mul t1, t0, t1</reverse>
+                                <reverse>add t0, t1, TargetReg</reverse>
+
+                                <reverse>beq t0, t4, REMU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                                <reverse>addi t2, t2, 1</reverse>
+
+                                <reverse>REMU_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX:</reverse>
+
+                                <reverse>mv TargetReg, t2</reverse>
+                            </true>
+                        </switch>
+                    </specialization>
+                </unsigned>
+            </signage>
+            <switch>
+                <true>
+                    <instr>li t0, ADDRESS</instr>
+                    <instr>li t2, 0x1F</instr>
+                    <instr>and t3, randValue, t2</instr>
+                    <instr>div t1, t3, FocusReg</instr>
+                    <instr>sw t1, 0(t0)</instr>
+                    <instr>li t0, ADDRESS2</instr>
+                    <instr>sw FocusReg, 0(t0)</instr>
+                    <!-- check if divisor is negative -->
+                    <instr>li t4, 0x1</instr>
+                    <instr>bgt FocusReg, zero, REM_SWITCH_POSITIVE_BRANCH_INDEX</instr>
+                    <!-- st negative flag -->
+                    <instr>li t4, 0x0</instr>
+                    <instr>REM_SWITCH_POSITIVE_BRANCH_INDEX:</instr>
+                    <instr>li t5, ADDRESS3</instr>
+                    <instr>sw t4, 0(t5)</instr>
+                    <!-- rem instruction -->
+                    <instr>rem TargetReg, t3, FocusReg</instr>
+
+                    <pre-sequence-instr>li t2, 0x1F</pre-sequence-instr>
+                    <pre-sequence-instr>and plaintemp, randValue, t2</pre-sequence-instr>
+                    <sequence-instr>rem PlainTargetReg, plaintemp, FocusSequenceReg</sequence-instr>
+
+                    <!-- restore quotient -->
+                    <reverse>li t0, ADDRESS</reverse>
+                    <reverse>lw t0, 0(t0)</reverse> <!-- divident-->
+                    <reverse>li t2, 0x1F</reverse>
+                    <reverse>and t1, randValue, t2</reverse>
+                    <reverse>mv t4, t1</reverse>
+
+                    <!-- if divisor bigger then divident -->
+                    <reverse>beqz t0, REM_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX</reverse>
+
+                    <!-- restore divisor -->
+                    <!-- (quotient - remainder) / divident = divisor and quotient - (divident * divisor) - remainder = 0   -->
+                    <!-- quotient -->
+                    <reverse>mv t2, zero</reverse>
+                    <reverse>sub t3, t1, TargetReg</reverse>
+                    <!-- check for negative divisor handling -->
+                    <reverse>li t5, ADDRESS3</reverse>
+                    <reverse>lw t5, 0(t5)</reverse>
+                    <reverse>beqz t5, REM_SWITCH_RESTORE_NEG_BRANCH_INDEX</reverse>
+                    <!-- restore positive remainder -->
+                    <reverse>REM_SWITCH_RESTORE_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>beqz t3, REM_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, 1</reverse>
+                    <reverse>beqz t2, REM_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>sub t1, t1, t0</reverse>
+                    <reverse>sub t3, t1, TargetReg</reverse>
+                    <reverse>j REM_SWITCH_RESTORE_LOOP_BRANCH_INDEX</reverse>
+
+                    <!-- restore negative remainder -->
+                    <reverse>REM_SWITCH_RESTORE_NEG_BRANCH_INDEX:</reverse>
+                    <reverse>REM_SWITCH_RESTORE_NEG_LOOP_BRANCH_INDEX:</reverse>
+                    <reverse>beqz t3, REM_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, -1</reverse>
+                    <reverse>beqz t2, REM_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>add t1, t1, t0</reverse>
+                    <reverse>sub t3, t1, TargetReg</reverse>
+                    <reverse>j REM_SWITCH_RESTORE_NEG_LOOP_BRANCH_INDEX</reverse>
+
+                    <reverse>REM_SWITCH_RESTORE_FROM_MEM_BRANCH_INDEX:</reverse>
+                    <reverse>li t1, ADDRESS2</reverse>
+                    <reverse>lw t2, 0(t1)</reverse> <!-- remainder-->
+                    <!-- check if RandValue can be restored (if div worked right)-->
+                    <reverse>mul t1, t0, t1</reverse>
+                    <reverse>add t0, t1, TargetReg</reverse>
+
+                    <reverse>beq t0, t4, REM_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX</reverse>
+                    <reverse>addi t2, t2, 1</reverse>
+
+                    <reverse>REM_SWITCH_RESTORE_FOCUSREG_BRANCH_INDEX:</reverse>
+
+                    <reverse>mv TargetReg, t2</reverse>
+                </true>
+            </switch>
+        </specialization>
+    </rem>
+
+    <!-- Initialise register -->
+    <init>
+        <register>
+            li TargetReg, randValue
+            <enable>
+                <immediate>i32</immediate>
+            </enable>
+        </register>
+    </init>
+
+
+    <immediate_ASSEMBLY>
+        <i32>
+            <instr>
+                l randValue, randImmediate
+                <enable>
+                    <immediate>i32</immediate>
+                    <signage>signed</signage>
+                </enable>
+            </instr>
+        </i32>
+        <i20>
+            <instr>
+                l randValue, randImmediate
+                <enable>
+                    <immediate>i32</immediate>
+                    <signage>signed</signage>
+                </enable>
+            </instr>
+        </i20>
+        <i12>
+            <instr>
+                l randValue, randImmediate
+                <enable>
+                    <immediate>i32</immediate>
+                    <signage>signed</signage>
+                </enable>
+            </instr>
+        </i12>
+        <i12n>
+            <instr>
+                l randValue, randImmediate
+                <enable>
+                    <immediate>i32</immediate>
+                    <signage>signed</signage>
+                </enable>
+            </instr>
+        </i12n>
+        <i5>
+            <instr>
+                l randValue, randImmediate
+                <enable>
+                    <immediate>i32</immediate>
+                    <signage>signed</signage>
+                </enable>
+            </instr>
+        </i5>
+    </immediate_ASSEMBLY>
+
+
+    <comparison>
+        <instr>bne FocusReg, TargetReg, END_SIMULATION</instr>
+        <instr>nop</instr>
+    </comparison>
+
+    <global-pre-seqeunce>
+        <instr>mv FocusSequenceReg, FocusReg</instr>
+    </global-pre-seqeunce>
+    <fixed-imm-value>
+        <instr>li randValue, randImmediate</instr>
+        <instr>nop</instr>
+    </fixed-imm-value>
+</instructions-list>
