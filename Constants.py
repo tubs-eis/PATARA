@@ -1,12 +1,3 @@
-# Copyright (c) 2023 Chair for Chip Design for Embedded Computing,
-#                    Technische Universitaet Braunschweig, Germany
-#                    www.tu-braunschweig.de/en/eis
-#
-# Use of this source code is governed by an MIT-style
-# license that can be found in the LICENSE file or at
-# https://opensource.org/licenses/MIT.
-
-
 from enum import Enum
 
 
@@ -156,25 +147,25 @@ FOLDER_EXPORT_ASSEMBLY = "reversiAssembly"
 
 
 def get_path_processor(architecture):
-    return 'sources/' + architecture + '/processor_' + architecture + '.xml'
+    return 'targets/' + architecture + '/processor_' + architecture + '.xml'
 
 
 def get_path_instruction(architecture):
-    return 'sources/' + architecture + '/instructions_' + architecture + '.xml'
+    return 'targets/' + architecture + '/instructions_' + architecture + '.xml'
 
 
 def get_path_header(architecture, simulator=False):
     if simulator:
-        return 'sources/' + architecture + '/header_venus_' + architecture + '.s'
+        return 'targets/' + architecture + '/header_venus_' + architecture + '.s'
     else:
-        return 'sources/' + architecture + '/header_' + architecture + '.s'
+        return 'targets/' + architecture + '/header_' + architecture + '.s'
 
 
 def get_path_footer(architecture, simulator=False):
     if simulator:
-        return 'sources/' + architecture + '/footer_venus_' + architecture + '.s'
+        return 'targets/' + architecture + '/footer_venus_' + architecture + '.s'
     else:
-        return 'sources/' + architecture + '/footer_' + architecture + '.s'
+        return 'targets/' + architecture + '/footer_' + architecture + '.s'
 
 
 INSTRUCTION_DEFAULT_MODES = "default"

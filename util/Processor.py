@@ -1,11 +1,3 @@
-# Copyright (c) 2023 Chair for Chip Design for Embedded Computing,
-#                    Technische Universitaet Braunschweig, Germany
-#                    www.tu-braunschweig.de/en/eis
-#
-# Use of this source code is governed by an MIT-style
-# license that can be found in the LICENSE file or at
-# https://opensource.org/licenses/MIT.
-
 import random
 from random import randint, uniform, randrange, shuffle
 from typing import Dict, List, Union
@@ -536,7 +528,7 @@ class Processor:
         if enabledFeatures:
             alignmed = int(enabledFeatures[ADDRESS_ALIGNMENT]) if enabledFeatures[ADDRESS_ALIGNMENT] else aligned
             maxBlockedAddresses = maxBlockedAddresses + alignmed + aligned + 4
-            print(maxBlockedAddresses)
+            # print(maxBlockedAddresses)
         for i in range(maxBlockedAddresses):
             if address + i in self.instance.blockedMemoryAddresses:
                 return True

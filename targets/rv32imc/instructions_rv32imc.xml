@@ -1,11 +1,3 @@
-<!-- Copyright (c) 2023 Chair for Chip Design for Embedded Computing,
-                    Technische Universitaet Braunschweig, Germany
-                    www.tu-braunschweig.de/en/eis
-
- Use of this source code is governed by an MIT-style
- license that can be found in the LICENSE file or at
- https://opensource.org/licenses/MIT.
--->
 <instructions-list>
     <default>
         <signage>signed/unsigned/signed-unsigned</signage>
@@ -624,9 +616,9 @@
         <reverse>add t0, t0, t1</reverse>
 
         <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-        <reverse>beq t0, TargetReg, LB_NO_ERROR</reverse>
+        <reverse>beq t0, TargetReg, LB_NO_ERROR_BRANCH_INDEX</reverse>
         <reverse>addi t0, t0, 1</reverse>
-        <reverse>LB_NO_ERROR:</reverse>
+        <reverse>LB_NO_ERROR_BRANCH_INDEX:</reverse>
         <reverse>mv TargetReg, t0</reverse>
 
         <signage>signed/unsigned</signage>
@@ -656,9 +648,9 @@
                     <reverse>slli t0, t0, 8</reverse>
                     <reverse>add t0, t0, t1</reverse>
                     <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-                    <reverse>beq t0, TargetReg, LB_NO_ERROR</reverse>
+                    <reverse>beq t0, TargetReg, LB_NO_ERROR_BRANCH_INDEX</reverse>
                     <reverse>addi t0, t0, 1</reverse>
-                    <reverse>LB_NO_ERROR:</reverse>
+                    <reverse>LB_NO_ERROR_BRANCH_INDEX:</reverse>
                     <reverse>mv TargetReg, t0</reverse>
                 </unsigned>
             </signage>
@@ -699,9 +691,9 @@
         <reverse>add t0, t0, t1</reverse>
 
         <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-        <reverse>beq t0, TargetReg, LH_NO_ERROR</reverse>
+        <reverse>beq t0, TargetReg, LH_NO_ERROR_BRANCH_INDEX</reverse>
         <reverse>addi t0, t0, 1</reverse>
-        <reverse>LH_NO_ERROR:</reverse>
+        <reverse>LH_NO_ERROR_BRANCH_INDEX:</reverse>
         <reverse>mv TargetReg, t0</reverse>
 
         <signage>signed/unsigned</signage>
@@ -731,9 +723,9 @@
                     <reverse>slli t0, t0, 16</reverse>
                     <reverse>add t0, t0, t1</reverse>
                     <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-                    <reverse>beq t0, TargetReg, LH_NO_ERROR</reverse>
+                    <reverse>beq t0, TargetReg, LH_NO_ERROR_BRANCH_INDEX</reverse>
                     <reverse>addi t0, t0, 1</reverse>
-                    <reverse>LH_NO_ERROR:</reverse>
+                    <reverse>LH_NO_ERROR_BRANCH_INDEX:</reverse>
                     <reverse>mv TargetReg, t0</reverse>
                 </unsigned>
             </signage>
@@ -752,9 +744,9 @@
         <reverse>sub t0, t0, randValue</reverse>
         <reverse>lw t0, randValue(t0)</reverse>
         <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-        <reverse>beq t0, TargetReg, LW_NO_ERROR</reverse>
+        <reverse>beq t0, TargetReg, LW_NO_ERROR_BRANCH_INDEX</reverse>
         <reverse>addi t0, t0, 1</reverse>
-        <reverse>LW_NO_ERROR:</reverse>
+        <reverse>LW_NO_ERROR_BRANCH_INDEX:</reverse>
         <reverse>mv TargetReg, t0</reverse>
 
         <pre-sequence-instr>li plaintemp, TEST_ADDRESS</pre-sequence-instr>
@@ -814,9 +806,9 @@
 
         <reverse>SB_SET_TARGETREG_BRANCH_INDEX:</reverse>
         <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-        <reverse>beq t0, TargetReg, SB_NO_ERROR</reverse>
+        <reverse>beq t0, TargetReg, SB_NO_ERROR_BRANCH_INDEX</reverse>
         <reverse>addi t0, t0, 1</reverse>
-        <reverse>SB_NO_ERROR:</reverse>
+        <reverse>SB_NO_ERROR_BRANCH_INDEX:</reverse>
         <reverse>mv TargetReg, t0</reverse>
 
         <signage>signed</signage>
@@ -871,9 +863,9 @@
         <reverse>SH_SET_TARGETREG_BRANCH_INDEX:</reverse>
 
         <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-        <reverse>beq t0, TargetReg, SH_NO_ERROR</reverse>
+        <reverse>beq t0, TargetReg, SH_NO_ERROR_BRANCH_INDEX</reverse>
         <reverse>addi t0, t0, 1</reverse>
-        <reverse>SH_NO_ERROR:</reverse>
+        <reverse>SH_NO_ERROR_BRANCH_INDEX:</reverse>
         <reverse>mv TargetReg, t0</reverse>
 
         <signage>signed</signage>
@@ -896,9 +888,9 @@
         <reverse>lw t0, randImmediate(t0)</reverse>
 
         <!-- result as TargetRegister if same as TargetRegister. Else modified value-->
-        <reverse>beq t0, TargetReg, SW_NO_ERROR</reverse>
+        <reverse>beq t0, TargetReg, SW_NO_ERROR_BRANCH_INDEX</reverse>
         <reverse>addi t0, t0, 1</reverse>
-        <reverse>SW_NO_ERROR:</reverse>
+        <reverse>SW_NO_ERROR_BRANCH_INDEX:</reverse>
         <reverse>mv TargetReg, t0</reverse>
 
         <pre-sequence-instr>li plaintemp, TEST_ADDRESS</pre-sequence-instr>
@@ -1307,7 +1299,7 @@
         <reverse>sll t5, randValue, t3</reverse>
         <reverse>add t1, t4, t5</reverse>
         <!-- controll overflow -->
-        <reverse>bgeu t1, t4 MULH_NO_OVERFLOW_BRANCH_INDEX</reverse>
+        <reverse>bgeu t1, t4, MULH_NO_OVERFLOW_BRANCH_INDEX</reverse>
         <!-- if overflow, add 1 to higher result -->
         <reverse>addi t2, t2, 1</reverse>
         <reverse>MULH_NO_OVERFLOW_BRANCH_INDEX:</reverse>
@@ -1406,7 +1398,7 @@
                     <reverse>sll t5, randValue, t3</reverse>
                     <reverse>add t1, t4, t5</reverse>
                     <!-- controll overflow -->
-                    <reverse>bgeu t1, t4 MULHU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                    <reverse>bgeu t1, t4, MULHU_NO_OVERFLOW_BRANCH_INDEX</reverse>
                     <!-- if overflow, add 1 to higher result -->
                     <reverse>addi t2, t2, 1</reverse>
                     <reverse>MULHU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
@@ -1470,7 +1462,7 @@
                                 <reverse>sll t5, t0, t3</reverse>
                                 <reverse>add t1, t4, t5</reverse>
                                 <!-- controll overflow -->
-                                <reverse>bgeu t1, t4 MULHU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                                <reverse>bgeu t1, t4, MULHU_NO_OVERFLOW_BRANCH_INDEX</reverse>
                                 <!-- if overflow, add 1 to higher result -->
                                 <reverse>addi t2, t2, 1</reverse>
                                 <reverse>MULHU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
@@ -1534,7 +1526,7 @@
                     <reverse>sll t5, randValue, t3</reverse>
                     <reverse>add t1, t4, t5</reverse>
                     <!-- controll overflow -->
-                    <reverse>bgeu t1, t4 MULHSU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                    <reverse>bgeu t1, t4, MULHSU_NO_OVERFLOW_BRANCH_INDEX</reverse>
                     <!-- if overflow, add 1 to higher result -->
                     <reverse>addi t2, t2, 1</reverse>
                     <reverse>MULHSU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
@@ -1618,7 +1610,7 @@
                                 <reverse>sll t5, t0, t3</reverse>
                                 <reverse>add t1, t4, t5</reverse>
                                 <!-- controll overflow -->
-                                <reverse>bgeu t1, t4 MULHSU_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                                <reverse>bgeu t1, t4, MULHSU_NO_OVERFLOW_BRANCH_INDEX</reverse>
                                 <!-- if overflow, add 1 to higher result -->
                                 <reverse>addi t2, t2, 1</reverse>
                                 <reverse>MULHSU_NO_OVERFLOW_BRANCH_INDEX:</reverse>
@@ -1706,7 +1698,7 @@
                     <reverse>sll t5, t0, t3</reverse>
                     <reverse>add t1, t4, t5</reverse>
                     <!-- controll overflow -->
-                    <reverse>bgeu t1, t4 MULH_NO_OVERFLOW_BRANCH_INDEX</reverse>
+                    <reverse>bgeu t1, t4, MULH_NO_OVERFLOW_BRANCH_INDEX</reverse>
                     <!-- if overflow, add 1 to higher result -->
                     <reverse>addi t2, t2, 1</reverse>
                     <reverse>MULH_NO_OVERFLOW_BRANCH_INDEX:</reverse>

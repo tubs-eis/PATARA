@@ -1,12 +1,3 @@
-# Copyright (c) 2023 Chair for Chip Design for Embedded Computing,
-#                    Technische Universitaet Braunschweig, Germany
-#                    www.tu-braunschweig.de/en/eis
-#
-# Use of this source code is governed by an MIT-style
-# license that can be found in the LICENSE file or at
-# https://opensource.org/licenses/MIT.
-
-
 import argparse
 import os
 import subprocess
@@ -90,6 +81,8 @@ if __name__ == '__main__':
                           help="Probability to stall the pipeline between base instructions with forwarding holes. Defaults to 0.5",
                           default=0.5)
 
+
+
     args = parser.parse_args()
 
     dCacheMisses = float(args.dcacheMiss)
@@ -141,7 +134,8 @@ if __name__ == '__main__':
     runID = str(int(time.time()))
     numberTestInstructions = 0
     totalInstructions = 0
-    fileCount = getFilesInDir(FOLDER_EXPORT_ASSEMBLY)
+    fileCount =0
+    original_fileCount = getFilesInDir(FOLDER_EXPORT_ASSEMBLY)
 
     if singleInstruction:
         singleInstructionTests, testcases, instrCount = stack.createSingleInstructionTest(immediateProbability,
@@ -159,6 +153,7 @@ if __name__ == '__main__':
             rawfile.write(code)
             rawfile.write(footer)
             rawfile.close()
+
             fileCount += 1
 
     if args.basicInstruction:
@@ -228,6 +223,7 @@ if __name__ == '__main__':
                 rawfile.write(code)
                 rawfile.write(footer)
                 rawfile.close()
+
                 fileCount += 1
 
     if args.interleaving:
@@ -255,9 +251,12 @@ if __name__ == '__main__':
             rawfile.write(code)
             rawfile.write(footer)
             rawfile.close()
+
             fileCount += 1
 
-    print(str(fileCount) + " Assembly Files successfully generated.")
-    print("Test Instructions executed  : " + str(numberTestInstructions))
-    print("Total Instructions Generated: " + str(totalInstructions))
+
+
+
+    print(str(fileCount) + " Assembly Files successfully generated. Total files in folder: " + str(original_fileCount + fileCount))
+    print("Test Instructions created: " + str(numberTestInstructions))
     print("--- %s seconds ---" % (time.time() - start_time))
