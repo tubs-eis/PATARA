@@ -43,7 +43,7 @@ The PATARA tool is described in the following paper. If you are using PATARA, pl
 - [RISC-V](#risc-v)
 - [VLIW](#vliw)
 - [Custom Target](#custom-targets)
-    - [Sample Test](#sample-test)
+    - [Example Patara Test](#example-patara-test)
     - [Pitfalls](#pitfalls)
 
 
