@@ -75,8 +75,8 @@ pip3 install -r requirements.txt
 
 
 ### Running-PATARA
-The default architecture target is RISC-V.
-The assembly files will be aggregated in a newly created folder `reversiAssembly`
+The default ISA target is RISC-V.
+The resulting assembly files will be aggregated in a newly created folder `reversiAssembly`.
 
 
 To access the help message, run 
@@ -84,6 +84,13 @@ To access the help message, run
 ```bash
 python3 main.py -h 
 ```
+
+By default the RISC-V ISA is seleted and corresponds to the following command. 
+To select a different target, the folder-name found in `targets` has to be passed to the architecture parameter.
+```bash
+python3 main.py -a rv32imc
+```
+
 
 Creating tests for all configurations of all instructions:
 ```bash
@@ -156,30 +163,75 @@ The configuration files are stored in `targets`.
 
 
 
- #### Sample Test
+#### Example Patara Test
 
- A Test consists of the following componentens
- 
- Header:
- 1. initialization of the processor
- 2. randomization of the register file
- 
- test:
-
- 3. Actual test-instruction
- 4. Comparison of initial and target data 
-
- Footer: 
-
- 5. a. Success branch target. Address 0 set to zero to indicate a successful test
- 5. b. Failure branch target. Address 0 set to 1 to indicate a failed test
- 6. Exit Assembly test
-
-After the execution of a test, the Address 0 has to be evaluated to determine if the test was successful. 
-An simple example can be generated with 
-```bash
-python3 main.py -b add
+To generate an example patara assembly file for the RISC-V ISA, the following command can be used: 
 ```
+python3 main.py -b add -a rv32imc
+```
+
+The parts of the PATARA tests are explained by looking at the resulting assembly file of the previous command. 
+The assembly file can be found under `reversiAssembly/singleInstr_add_switch_50_1685627323.S`.
+Note: The integer at the end of the filename corresponds to the time in miliseconds, when the assembly was was generated and will differ.
+
+```
+########################## Header #################################
+####### initialize processor
+.section .text.trap, "ax"
+.option norvc
+.global vector_table
+
+....
+	
+
+####### randomize register file
+li x1, 0xaf7b6215
+...
+li x31, 0x8c88c802
+
+########################## Tests #################################
+
+####### Patara test of the ADD instruction
+#add
+add x8, x19, x4
+
+#REVERSE:add
+sub x8, x8, x19
+
+####### Comparison of inital data (x4) and target data (x8)
+#Comparison Code
+bne x4, x8, END_SIMULATION
+nop
+
+
+########################## Footer #################################
+
+####### Successful execution, set flag
+END_TEST:                   # SUCCESS | successfull
+	li	t5, -60
+	li  t2, 0                   
+	sw	t2, 0(t5)			# signature dump: 0
+	j _exit
+
+####### Failed execution, set flag
+END_SIMULATION:             # FAIL | not successfull
+	li	t5, -60
+	li  t2, 1   
+	sw	t2, 0(t5)			# signature dump: 1 (fail)
+
+####### Successful execution, set flag
+_exit:                      
+	li	t5, -52
+	sw	gp, 0(t5)			# exit code : gp | stops simulation
+	fence
+	li	gp, 1
+	ecall
+	
+```
+
+
+After the execution of a test, the Address 0 has to be evaluated to determine if the test was successful (0) or failed (1). 
+
 
 #### Pitfalls
 - **Branch targets** should always have the keyword `_BRANCH_INDEX` so that the test-instruction can be repeated in a test. It will be automatically replaced in the code generation with an integer number.
