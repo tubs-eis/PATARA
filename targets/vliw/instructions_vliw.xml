@@ -29,8 +29,13 @@
     
 
     <init>
+        <immediate>
         <register>MVIL_32 TargetReg, #0x0f, randValue</register>
         <register>MVIL_32 TargetReg, #0xf0, randValue</register>
+        </immediate>
+        <memory>
+        <register>LW_32 TargetReg, ADDRESS</register>
+        </memory>
     </init>
     <init-post>
         <instr>NOT_SCHEDULE_BRANCH_INDEX</instr>

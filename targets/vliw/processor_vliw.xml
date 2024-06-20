@@ -134,4 +134,7 @@
         <dec></dec>
     </address>
 
+     <comment>//</comment>
+    <assembler-ending>asm</assembler-ending>
+
 </processor>

@@ -1,3 +1,11 @@
+# Copyright (c) 2022 Chair for Chip Design for Embedded Computing,
+#                    Technische Universitaet Braunschweig, Germany
+#                    www.tu-braunschweig.de/en/eis
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
 class RandomOptions:
     def __init__(self, args):
         if args.not_randomize and (args.randomize_init_load or args.randomize_init_immediate):

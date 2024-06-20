@@ -52,7 +52,14 @@ The PATARA tool is described in the following paper. If you are using PATARA, pl
 [Citation](#Citation)
 
 ### New-Features
-### RISC-V-Support
+### Release v1.1: 
+- Interleaving test sequences can now be longer
+- added possibility to randomize from file (memory load) or from assembly (load immediate)
+- added parallelism to accelerate test generation
+- reorganized arguments to better indicate which arguments are grouped together
+- bug fixes
+
+### Release v1.0: RISC-V-Support
 - Added support for RV32I and RV32M instruction tests
 - Added support for dedicated instruction/data cache tests
 - Added support for dedicated pipeline hazard detection tests. This is especially useful for variable length  pipeline implementations.
@@ -70,9 +77,15 @@ git clone https://github.com/tubs-eis/PATARA.git
 
 Install python modules:
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
+### Initialization
+```bash
+source venv/bin/activate
+```
 
 ### Running-PATARA
 The default ISA target is RISC-V.
@@ -94,22 +107,22 @@ python3 main.py -a rv32imc
 
 Creating tests for all configurations of all instructions:
 ```bash
-python3 main.py -c
+python3 main.py --completeInstruction
 ```
 Creating interleaving testcases with variable repetitions can be generated with
 ```bash
-python3 main.py -i -l REPETITIONS
+python3 main.py --interleaving --isa_repetition REPETITIONS
 ```
 
 The test for explicit pipeline tests can be set with the following command. The command should be repeated with varying forwarding distances, to test all forwardig mechanisms. For our 6 stage pipeline FORWARDING_DISTANCE should vary from 0 to 4, to test all forwarding mechanisms.
 ```bash
-python3 main.py -s -f FORWARDING_DISTANCE 
+python3 main.py --sequence  --forwarding FORWARDING_DISTANCE 
 ```
 
 
 In a test-instruction the random value is set to a specific operand. This however can be changed, to test that data forwarding works for all ports. The probability to switch the operands can be set with
 ```bash
-python3 main.py --switch PROBABILITY
+python3 main.py  --switch_prob PROBABILITY
 ```
 
 Cache test can be configured with the following parameter: 
@@ -121,7 +134,7 @@ python3 main.py --icacheMiss PROBABILITY --dcacheMiss PROBABILITY --newMemoryBlo
 
 A single instruction test can be started with
 ```bash
-python3 main.py -b add
+python3 main.py --singleInstruction add
 ```
 
 
@@ -138,7 +151,7 @@ To verify the effectiveness of PATARA the coverage metrics were measured on an i
 
 
 More information can be found here:
-> S. Gesper, F. Stuckmann, L. Wöbbekind and G. Payá-Vayá. "PATARA: Extension of a Verification Framework for RISC-V Instruction Set Implementations". 2023 23rd International Conference on Embedded Computer Systems: Architectures, Modeling and Simulation (SAMOS), 2023, accepted for publication.
+> S. Gesper, F. Stuckmann, L. Wöbbekind and G. Payá-Vayá. "PATARA: Extension of a Verification Framework for RISC-V Instruction Set Implementations". 2023 23rd International Conference on Embedded Computer Systems: Architectures, Modeling and Simulation (SAMOS), 2023, https://doi.org/10.1007/978-3-031-46077-7_15
 
 ### VLIW 
 Due to licensing issues, the VLIW instruction set is massivly reduced and modified.
@@ -257,3 +270,72 @@ The PATARA tool is described in the following paper. If you are using PATARA, pl
 > F. Stuckmann, P. A. Fistanto and G. Payá-Vayá. "PATARA: A REVERSI-Based Open-Source Tool
 > for Post-Silicon Validation of Processor Cores". 2021 10th International Conference on
 > Modern Circuits and Systems Technologies (MOCAST), 2021, https://doi.org/10.1109/mocast52088.2021.9493373
+
+
+# Known Bugs
+Reverse should ideally work without Focusregister in reverse instruction (please consider removing them!)
+- Kavuaka requires that the Focusregister is valid for some reverse instructions to work (reverse of shift left)
+- RISC-V requires that the Focusregister is valid for some reverse instructions to work (beq and bne)
+
+## Interleaving
+- For each test instructions 5 Memory addresses will be blocked from the data memory address range. If they are not used in a Testinstruction they are not freed again, therefore small memories can exhaust the avaialable data memory range.
+This can be solved by giving back the memories, if they are unused in a test instruction, which is currently not implemented.
+-> register pressure can be reduced by providing load and store instructions, so that the random data can be spilled to memory and thus the register do not have to be permanently blocked. See Kavuaka for sample.
+```
+    <interleaving_random_to_memory>
+        <pre>
+        <instr>STORE ADDRESS5, randValue</instr>
+        </pre>
+        <post>
+        <instr>LOAD randValue, ADDRESS5</instr>
+        </post>
+    </interleaving_random_to_memory>
+```
+
+## Kavuaka
+- [x] correct fixed issue slot in assembly
+- [x] fix basic to also have randomize STATE in the middle
+- [ ] random implementation
+
+### Signed_unsigned
+Kavauka encodes the sign in some instructions (i.e. AND and OR) wrong.
+Instruction is Signed, however immediate is unsign extended.
+This fix is encoded with <signed_unsigned>True</signed_unsigned> in the instructions_kavauaka.xml file.
+
+
+
+
+### Switch operand (based on RISC-V)
+- idea behind: test forwarding of source operand 1 
+
+### Missing ISA
+- ELOOP is not implemented
+- kommentare todo f[r implementation
+- kommentare for missing instructions
+- 
+
+
+
+## RISC-V
+- does not have a randomize processor state between modification and reverse instruciton!
+
+### Instruction Types
+Instruction types can be defined
+- R : Register instruction
+- R-M: Register instruction multicyle
+- U : U-Type (Upper Immediate)
+- UJ:  (Unconditional Jump)
+- I : (Immediate)
+- S: (Store)
+- SB:  (Conditional Branch)
+
+### Enabled ISA Extensions
+- ISA extensions can be enabled and disabled, depending on if the processor can execute them
+- In an instruction the M extension of e.g. a multiplicaiton can be described by 
+```
+<isa_extension>m</isa_extension>
+```
+- I and M extens can be enabled with
+```
+--isa_extensions="im"
+```
