@@ -1,30 +1,35 @@
 import copy  # for deepcopy
 import itertools
+import pickle
 import random
 from typing import Dict, List
 
 from Constants import *
+import Constants
 from util.DataBank import DataBank
 from util.Processor import Processor
+from util.RandomOptions import RandomOptions
 from util.TestInstruction import TestInstruction
 
 
 class Stack:
 
-    def __init__(self, architecture, icacheMissChance):
+    def __init__(self, architecture, icacheMissChance, enabled_extensions):
         self.processor = Processor(architecture)
         self._TestInstructions = DataBank(
-            architecture).getTestInstructions()  # List of Instruction combos (TestInstruction)
+            architecture, enabled_extensions).getTestInstructions()  # List of Instruction combos (TestInstruction)
         self._instructionsList = []  # List of Testinstr to run (randomized from _TestInstructions)
         self.initRegCounter = 0
         self._BranchLimits: List[int] = []
         self.icacheMissChance = float(icacheMissChance)
+        self._restore_operands = None
+        self.need_random_block_memory = DataBank().need_random_block_register()
 
-    def generateInstructionsList(self, level: int, singleInstruction=""):
+    def generateInstructionsList(self, level: int, singleInstruction="", max_instructions=-1):
         self._instructionsList = []
         if singleInstruction != "":
             for testInstruction in self._TestInstructions:
-                if testInstruction.getInstruction() == singleInstruction:
+                if testInstruction.getInstruction().upper() == singleInstruction.upper():
                     self._instructionsList.append(copy.deepcopy(testInstruction))
                     return
         for i in range(level):
@@ -32,6 +37,10 @@ class Stack:
             # This should not affect all occurences inside the instructionslist
             self._instructionsList.extend(copy.deepcopy(self._TestInstructions))
         random.shuffle(self._instructionsList)
+        
+        if max_instructions > 0:
+            self._instructionsList = self._instructionsList[:max_instructions]
+        
         if self._instructionsList[0].getInstruction() == NOP_INSTR:
             nopInstr = self._instructionsList[0]
             for index in range(len(self._instructionsList)):
@@ -100,7 +109,7 @@ class Stack:
     def _getSequenceKey(self, instructionTypes, stallTypes, forwardingStallProb):
         key = list(instructionTypes.keys())[0]
         prob = random.uniform(0, 1)
-        if prob <= forwardingStallProb:
+        if prob <= forwardingStallProb and len(stallTypes) > 0:
             key = random.choice(stallTypes)
         return key
 
@@ -160,30 +169,31 @@ class Stack:
 
         for testInstruction in testInstructions:
             testInstruction.setTargetRegister(focus_register)
-        n = 3
 
     def randomizeInstructionListFeatures(self, immediateProbability=0.0, switchProbability=0.0):
         for testInstruction in self._instructionsList:
             testInstruction.set_random_features(immediateProbability, switchProbability)
             # todo: testing Kavuaka Conditional Execution
             # testInstruction.setEnableFeature(CONDITIONAL, "CRS")
-        n = 3
 
-    def _generateModCode(self, instructions: List[TestInstruction], sequenceDebugInfo=-1):
+    def _generateModCode(self, instructions: List[TestInstruction], sequenceDebugInfo=-1, interleaving=False):
         code = ""
-        for instr in instructions:
-            code += instr.generateModificationCode(sequenceDebugInfo)
-            code += "# new MOD starting"
-            n = 3
+        interleaving_instr = DataBank().get_pre_random_to_memory() if interleaving else []
+        for i, instr in enumerate(instructions):
+            code += instr.generateModificationCode(i, interleaving_instr)
+            code += Processor().get_assembler_comment() +"new MOD starting\n"
         return code
 
-    def _generateReverseCode(self, instructions: List[TestInstruction], sequenceDebugInfo=-1):
+    def _generateReverseCode(self, instructions: List[TestInstruction], sequenceDebugInfo=-1, interleaving=False):
         code = ""
+        interleaving_instr = DataBank().get_post_random_to_memory() if interleaving else []
+        counter = len(instructions) - 1
         for instr in reversed(instructions):
-            code += instr.generateReversiCode(sequenceDebugInfo)
+            code += instr.generateReversiCode(counter, interleaving_instr)
+            counter -=1
         return code
 
-    def generateCodeFull(self):
+    def generateCodeFull(self, interleaving=False):
         sequences: List[TestInstruction] = [self._instructionsList]
         if len(self._BranchLimits) > 0:
             sequences = []
@@ -197,12 +207,18 @@ class Stack:
         code = ''
         for i in range(len(sequences)):
             sequence: List[TestInstruction] = sequences[i]
-            code += "\n" + Processor().get_assembler_comment() + "Starting Sequence " + str(i) + "\n"
-            # generate Code
-            code += self._generateModCode(sequence, i)
-            # generate Reversi
-            code += self._generateReverseCode(sequence, i)
-            code += "\n" + Processor().get_assembler_comment() + "Ending Sequence " + str(i) + "\n"
+            try:
+                code += "\n" + Processor().get_assembler_comment() + "Starting Sequence " + str(i) + "\n"
+                # generate Code
+                code += self._generateModCode(sequence, i, interleaving)
+                # generate Reversi
+                code += self._generateReverseCode(sequence, i, interleaving)
+                code += "\n" + Processor().get_assembler_comment() + "Ending Sequence " + str(i) + "\n"
+            except Exception as e:
+                # dump sequence 
+                with open("interleaving_branch_bug", "wb") as fd:
+                    pickle.dump(sequence, fd)
+                raise Exception(e)
 
         # generate comparison code
         code += self.generateComparisonCode(self._instructionsList)
@@ -232,8 +248,8 @@ class Stack:
         return self.processor.generateComparisonCode(comparisionCode, focusInstruction, targetInstruction)
 
     def _createInterleavingInstructions(self, level: int = 1, immediateProbability=0.0, switchProbability=0.0,
-                                        specialImmediates=0.0):
-        self.generateInstructionsList(level)
+                                        specialImmediates=0.0, max_instructions=-1):
+        self.generateInstructionsList(level, max_instructions=max_instructions)
         self._setRandomFeatures(self._instructionsList, immediateProbability, switchProbability)
         self._sanitizeBranches(self._instructionsList)
         if Processor()._hasICache():
@@ -241,15 +257,14 @@ class Stack:
 
         code = ""
         code += Processor().calculateStartAddress(self._instructionsList)
-        self._chainInstructions(self._instructionsList, switchProbability)
+        self._chainInstructions(self._instructionsList, switchProbability, blockRandomRegister=self.need_random_block_memory)
 
         instructionCount = 0
         c, i = self._generateSpecialImmediateCode(self._instructionsList, specialImmediates)
         code += c
         instructionCount += i
 
-        code += self.generateCodeFull()
-        ErrorCode = self.generateCodeFull()
+        code += self.generateCodeFull(interleaving=True)
         instructionCount += self.getTotalInstructions(self._instructionsList)
 
         testInstructions = len(self._instructionsList)
@@ -401,21 +416,30 @@ class Stack:
         self._instructionsList = []
         self._BranchLimits = []
 
-    def createInterleavingInstructions(self, level: int = 1, immediateProbability=0.0, switchProbability=0.0,
-                                       specialImmediates=0.0):
-        code = DataBank().assemblyRandomizeRegisterFile()  # Initialize rand value in register
+    def createInterleavingInstructions(self, random_ops, level: int = 1, immediateProbability=0.0, switchProbability=0.0,
+                                       specialImmediates=0.0, max_instructions=-1):
+        if random_ops.has_init_reg_file():
+            code = DataBank().assemblyRandomizeRegisterFile(randomize_immediate=random_ops.has_init_immidiate())
+        else:
+            code = ""
+        
         testCode, testInstructions, instructionCount = self._createInterleavingInstructions(level, immediateProbability,
                                                                                             switchProbability,
-                                                                                            specialImmediates)
+                                                                                            specialImmediates, max_instructions=max_instructions)
         code += testCode
         # reset processor for next independent execution
         self.reset()
         Processor().reset()
         return code, testInstructions, instructionCount
 
-    def createSequenceInstructions(self, instructionList, immediateProbability=0.0, switchProbability=0.0, forwarding=0,
+    def createSequenceInstructions(self, instructionList, random_ops, immediateProbability=0.0, switchProbability=0.0, forwarding=0,
                                    specialImmediates=0.0, forwardingStallProb=0.0):
-        code = DataBank().assemblyRandomizeRegisterFile()
+        
+        if random_ops.has_init_reg_file():
+            code = DataBank().assemblyRandomizeRegisterFile(random_ops.has_init_immidiate())
+        else:
+            code = ""
+        
         testCode, testInstructions, instructionCount = self._generateCodeSequence(instructionList, forwarding,
                                                                                   immediateProbability,
                                                                                   switchProbability, specialImmediates,
@@ -427,8 +451,9 @@ class Stack:
         return code, testInstructions, instructionCount
 
     def createSingleInstructions(self, level: int = 1, immediateProbability: float = 0.0,
-                                 switchProbability: float = 0.0):
-        code = DataBank().assemblyRandomizeRegisterFile()
+                                 switchProbability: float = 0.0, randomize_immediate=True):
+        
+        code = DataBank().assemblyRandomizeRegisterFile(randomize_immediate)
         self.generateInstructionsList(level)
         self.randomizeInstructionListFeatures(immediateProbability, switchProbability)
         for index in range(len(self._instructionsList)):
@@ -443,26 +468,22 @@ class Stack:
         self.reset()
         return code, testInstruction, totalInstructions
 
-    def createSingleInstructionTest(self, immediateProbability=0.0, switchProbability=0.0, singleInstruction=""):
+    def createSingleInstructionTest(self, random_ops, immediateProbability=0.0, switchProbability=0.0, singleInstruction=""):
         result = []
         self.generateInstructionsList(1, singleInstruction)
         self.randomizeInstructionListFeatures(immediateProbability, switchProbability)
         totalInstructions = 0
         for index in range(len(self._instructionsList)):
-            testInstruction = self._instructionsList[index]
-            Processor().setStartAddress(testInstruction.calculateEnabledInstructions())
-            testInstruction.generateRandomOperands()
-            code = DataBank().assemblyRandomizeRegisterFile()
-            code += testInstruction.generateModificationCode()
-            code += testInstruction.generateReversiCode()
-            code += self.generate_comparison_code(index, index)
-            totalInstructions += testInstruction.getInstructionCount()
-            Processor().reset()
-            result.append([testInstruction.getInstruction(), code])
+            testInstruction: TestInstruction = self._instructionsList[index]
+            
+            assembly = self._generate_single_test_assembly(testInstruction, index, random_ops=random_ops)
+         
+            result.append([testInstruction.getInstruction(), assembly])
 
         return result, len(self._instructionsList), totalInstructions
+        
 
-    def createBasicSingleInstructionTest(self, singleInstruction: str = "") -> Dict[str, str]:
+    def create_basic_instruction_test(self, random_ops: RandomOptions, singleInstruction: str = "") -> Dict[str, str]:
         """ Dont test special codes. Creates for each possible feature combination for each instruction (or specific ones) its own assembly test code. This method is for debugging purposes only.
 
         Args:
@@ -482,7 +503,7 @@ class Stack:
                 # v equals features of currently choosen instruction
                 features = Processor().getAvailableInstructionFeaturesNames(
                     self._instructionsList[index].getInstruction())
-                testInstruction = self._instructionsList[index]
+                testInstruction: TestInstruction = self._instructionsList[index]
                 for immidiateAttr in features[IMMEDIATE]:
                     testInstruction.setEnableFeatureName(IMMEDIATE, immidiateAttr)
                     for alignedVal in features[ADDRESS_ALIGNMENT]:
@@ -499,15 +520,6 @@ class Stack:
                                         for simdAttr in features[SIMD]:
                                             testInstruction.setEnableFeatureName(SIMD, simdAttr)
 
-                                            # generate code
-                                            code = DataBank().assemblyRandomizeRegisterFile()
-                                            code += Processor().setStartAddress(
-                                                testInstruction.calculateEnabledInstructions())
-                                            testInstruction.generateRandomOperands()
-                                            code += testInstruction.generateModificationCode()
-                                            code += testInstruction.generateReversiCode()
-                                            code += self.generate_comparison_code(index, index)
-
                                             # distinct enabled features naming string as key for code in dict
                                             # idea: name equal to instruction name
                                             enabledFeaturesString = ""
@@ -519,15 +531,70 @@ class Stack:
                                             enabledFeaturesString += "_" + "Sig" + "-" + signageAttr if signageAttr else ""
                                             enabledFeaturesString += "_" + SIMD + "-" + simdAttr if simdAttr else ""
 
-                                            result[testInstruction.getInstruction() + enabledFeaturesString] = code
-                                            testInstructionCount += 1
-                                            totalInstructions += testInstruction.getInstructionCount()
+                                            key = testInstruction.getInstruction() + enabledFeaturesString
+                                            if key not in result:
+                                                assembly = self._generate_single_test_assembly(testInstruction, index, random_ops=random_ops)
+                                                
+                                                result[testInstruction.getInstruction() + enabledFeaturesString] = assembly
+                                                testInstructionCount += 1
+                                                totalInstructions += testInstruction.getInstructionCount()
+                                            
                                             Processor().reset()
 
         return result, testInstructionCount, totalInstructions
+    
+    def _set_restore_operands(self, testInstructionOperands, enabledFeatures):
+        operands = Processor().generateRandomOperands(enabledFeatures, generateFocusRegister=False,
+                                                      randImmediateExtension=DataBank().instance.randomImmediateType)
+        operands[OPERANDS.FOCUS_REGISTER.value] = testInstructionOperands[OPERANDS.FOCUS_REGISTER.value]
+        operands[OPERANDS.TARGET_REGISTER.value] = testInstructionOperands[OPERANDS.TARGET_REGISTER.value]
+        operands[OPERANDS.RAND_VALUE.value] = testInstructionOperands[OPERANDS.RAND_VALUE.value]
+        # if loading from memory, set the memory address
+        # in pre code, there can be ADDRESS that will use the start address and then increment it
+        operands[OPERANDS.ADDRESS.value] = Processor().get_processor_state_random_start_address()
+        self._restore_operands = operands
+        
+    def _get_restore_operands(self):
+        return self._restore_operands
+        
 
-    def createCompleteSingleInstructionTest(self, singleInstruction: str = "") -> Dict[str, str]:
-        """Creates for each possible feature combination for each instruction (or specific ones) its own assembly test code. This method is for debugging purposes only. 
+    def _generate_single_test_assembly(self,  testInstruction: TestInstruction, index: int, random_ops:RandomOptions):
+        # generate code
+        if random_ops.has_init_reg_file():
+            code = DataBank().assemblyRandomizeRegisterFile(random_ops.has_init_immidiate())
+        else:
+            code = ""
+        
+        code += Processor().setStartAddress(
+            testInstruction.calculateEnabledInstructions())
+        testInstruction.generateRandomOperands()
+        code += testInstruction.generateModificationCode()
+        
+        # randomize processor state
+        if random_ops.has_random_processor_state():
+            self._set_restore_operands(testInstruction.getOperands(), testInstruction.getEnabledFeatures())
+            restore_operands = self._get_restore_operands()
+            code += DataBank().randomizeProcessorState(
+                restore_operands, random_ops)
+            
+            # restore focus register after processor state randomization
+            # some operations need the focus register in their reversi code, 
+            # therefore it has to be restored after the processor state randomization
+            code += DataBank().restoreRandomizedFocusRegister(restore_operands)
+        
+        code += testInstruction.generateReversiCode()
+        
+        
+        
+        code += self.generate_comparison_code(index, index)
+        return code
+        
+
+
+    def create_complete_instruction_test(self, random_ops:RandomOptions, singleInstruction: str = "") -> Dict[str, str]:
+        """Creates for each possible feature combination for each instruction (or specific ones) its own assembly test code. 
+        Contains create_basic_instruction_test, additionally adds operand switchsing (i.e. random operand is now in operand 0 instead of only operand 1).
+        Needed for forwarding tests of source operand 0.
 
         Args:
             singleInstruction (str, optional): If only specific instructions should be tested, the name of the instruction . Defaults to "".
@@ -545,7 +612,7 @@ class Stack:
                 # v equals features of currently choosen instruction
                 features = Processor().getAvailableInstructionFeaturesNames(
                     self._instructionsList[index].getInstruction())
-                testInstruction = self._instructionsList[index]
+                testInstruction: TestInstruction = self._instructionsList[index]
                 for immidiateAttr in features[IMMEDIATE]:
                     testInstruction.setEnableFeatureName(IMMEDIATE, immidiateAttr)
                     for alignedVal in features[ADDRESS_ALIGNMENT]:
@@ -565,21 +632,8 @@ class Stack:
                                                 if immidiateAttr:
                                                     switchAttr = None
                                                 testInstruction.setEnableFeatureName(SWITCH, switchAttr)
-
-                                                # generate code
-                                                code = DataBank().assemblyRandomizeRegisterFile()
-                                                code += Processor().setStartAddress(
-                                                    testInstruction.calculateEnabledInstructions())
-                                                testInstruction.generateRandomOperands()
-                                                code += testInstruction.generateModificationCode()
-                                                code += DataBank().randomizeProcessorState(
-                                                    testInstruction.getOperands(), testInstruction.getEnabledFeatures())
-                                                code += testInstruction.generateReversiCode()
-                                                code += DataBank().restoreRandomizedFocusRegister(
-                                                    testInstruction.getOperands(), testInstruction.getEnabledFeatures())
-                                                code += self.generate_comparison_code(index, index)
-
-                                                # distinct enabled features naming string as key for code in dict
+                                                
+                                                 # distinct enabled features naming string as key for code in dict
                                                 # idea: name equal to instruction name
                                                 enabledFeaturesString = ""
                                                 enabledFeaturesString += "_" + "I" + "-" + immidiateAttr if immidiateAttr else ""
@@ -593,9 +647,12 @@ class Stack:
 
                                                 key = testInstruction.getInstruction() + enabledFeaturesString
                                                 if key not in result:
-                                                    result[key] = code
+                                                    assembly = self._generate_single_test_assembly(testInstruction, index, random_ops)
+                                                    
+                                                    result[key] = assembly
                                                     testInstructionCount += 1
                                                     totalInstructions += testInstruction.getInstructionCount()
+                                                
                                                 Processor().reset()
 
         return result, testInstructionCount, totalInstructions

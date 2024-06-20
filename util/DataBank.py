@@ -12,9 +12,11 @@ from util.TestInstruction import TestInstruction
 
 class DataBank:
     class __Databank:
-        def __init__(self, architecture):
+        def __init__(self, architecture, enabled_extensions=""):
             self.architecture = architecture
+            self.enabled_extensions = enabled_extensions
             self._dict = {}
+            self.interleaving_random_to_memory = {}
             self.ICacheMissInstruction = []
             self._readImmediateAssembly()
             self.read_xml()
@@ -24,7 +26,6 @@ class DataBank:
             self._readGlobalPreSequence()
             self._readFixedImmediate()
             self._readRandomizeProcessorState()
-
             n = 3
 
         def _isInstruction(self, key):
@@ -55,13 +56,13 @@ class DataBank:
 
             return True
 
-        def __parseInstructions(self, dictInstruction):
+        def __parseInstructions(self, dictInstruction, instruction_list):
             result = []
             instructions = dictInstruction
             if not isinstance(dictInstruction, list):
                 instructions = [dictInstruction]
             for instr in instructions:
-                i = Instruction(instr)
+                i = Instruction(instr, instruction_list)
 
                 mandatoryFeatures = {IMMEDIATE: Processor().getImmediateDefault()}
                 if isinstance(instr, dict):
@@ -77,6 +78,8 @@ class DataBank:
             self.immediateAssembly = None
             file = open(get_path_instruction(self.architecture))
             xml_content = xmltodict.parse(file.read())
+            
+            instruction_list = [instr.lower() for instr in list(xml_content[INST_LIST]) if SATURATION in xml_content[INST_LIST][instr] and instr != INSTRUCTION_DEFAULT_MODES]
 
             for group in xml_content[INST_LIST]:
                 if group == IMMEDIATE_ASSEMBLY:
@@ -86,30 +89,51 @@ class DataBank:
                         self.immediateAssembly[imm] = {}
                         if INSTR in xml_content[INST_LIST][IMMEDIATE_ASSEMBLY][imm]:
                             instr = xml_content[INST_LIST][IMMEDIATE_ASSEMBLY][imm][INSTR]
-                            instructions = self.__parseInstructions(instr)
+                            instructions = self.__parseInstructions(instr, instruction_list)
                             self.immediateAssembly[imm][V_MUTABLE] = instructions
                         else:
                             for simd in xml_content[INST_LIST][IMMEDIATE_ASSEMBLY][imm]:
                                 instr = xml_content[INST_LIST][IMMEDIATE_ASSEMBLY][imm][simd][INSTR]
-                                instructions = self.__parseInstructions(instr)
+                                instructions = self.__parseInstructions(instr, instruction_list)
                                 self.immediateAssembly[imm][simd] = instructions
 
         def read_xml(self):
             file = open(get_path_instruction(self.architecture))
             self.xml_content = xmltodict.parse(file.read())
             self.testinstruction_list = []
-            self.instructionList = []
+            self.instruction_set = []
             # generate Characteristics Dictionary about Instructions
             for instr in self.xml_content[INST_LIST]:
                 if not self._isInstruction(instr):
                     continue
+                
+                # check if instruction is in the enabled isa extension
+                if self.enabled_extensions != "" and ISA_EXTENSION in self.xml_content[INST_LIST][instr]:
+                    if self.xml_content[INST_LIST][instr][ISA_EXTENSION] not in self.enabled_extensions:
+                        continue
+                
+                # handle interleaving memory instructions
+                if INTERLEAVING_RANDOM_TO_MEMORY in instr:
+                    continue
 
                 self._addDictEntry(instr)
-                self.instructionList.append(instr)
+                self.instruction_set.append(instr.lower())
+            
+                
 
             # generate TestInstructions
             for instr in self.xml_content[INST_LIST]:
                 if not self._isInstruction(instr):
+                    continue
+                
+                # check if instruction is in the enabled isa extension
+                if self.enabled_extensions != "" and ISA_EXTENSION in self.xml_content[INST_LIST][instr]:
+                    if self.xml_content[INST_LIST][instr][ISA_EXTENSION] not in self.enabled_extensions:
+                        continue
+                
+                if INTERLEAVING_RANDOM_TO_MEMORY in instr:
+                    self.interleaving_random_to_memory[PRE_KEY] = self.__parseInstructions(self.xml_content[INST_LIST][INTERLEAVING_RANDOM_TO_MEMORY][PRE_KEY][INSTR], self.instruction_set)
+                    self.interleaving_random_to_memory[POST_KEY] = self.__parseInstructions(self.xml_content[INST_LIST][INTERLEAVING_RANDOM_TO_MEMORY][POST_KEY][INSTR], self.instruction_set)
                     continue
 
                 temp = self.xml_content[INST_LIST][instr]
@@ -145,13 +169,20 @@ class DataBank:
                 instrType = self._getInstructionType(temp)
                 intImms = self._getSpecialImmediates(temp)
                 icacheMissCandidate = self._getICacheMissCandidate(temp)
+                
+                wrong_sign = False
+                if SIGNED_UNSIGNED in temp:
+                    wrong_sign = bool(temp[SIGNED_UNSIGNED])
+                    if not wrong_sign:
+                        print(f"Warning: {instr} has wrong_sign_encoding set to False. This is not ncessary, since it is the default.")
 
                 testInstruction = TestInstruction(original, preSequence, sequence, postSequence, reverse, instr,
                                                   specialization,
-                                                  self.instructionList, copy.deepcopy(self.immediateAssembly),
+                                                  self.instruction_set, copy.deepcopy(self.immediateAssembly),
                                                   instrType, specialImmediates=intImms,
+                                                  instruction_set=self.instruction_set,
                                                   icacheMissCandidate=icacheMissCandidate,
-                                                  iCacheRepetition=iCacheRepetition)
+                                                  iCacheRepetition=iCacheRepetition, signed_unsigned=wrong_sign)
                 self.testinstruction_list.append(testInstruction)
                 if testInstruction.isImemCacheMissCandidate():
                     temp = copy.deepcopy(testInstruction)
@@ -190,7 +221,7 @@ class DataBank:
 
                 self.fixedInstructions: List[Instruction] = []
                 for instr in fixedInstructions:
-                    self.fixedInstructions.append(Instruction(instr))
+                    self.fixedInstructions.append(Instruction(instr, self.instruction_set))
 
         def _readRandomizeProcessorState(self):
             self.preReverseProcessorState = self.__importSpecialInstructions(PRE_REVERSE_PROCESSOR_STATE)
@@ -202,18 +233,43 @@ class DataBank:
         def _setRandomImmediateType(self):
             self.randomImmediateType = None
             randomImmediate = OPERANDS.RAND_IMMEDIATE1.value
-            for instr in self.preReverseProcessorState:
-                if randomImmediate in instr.string():
-                    self.randomImmediateType = instr.getFeatures()[OPERAND_TYPE.IMMEDIATE.value]
-                    return
+            if isinstance(self.preReverseProcessorState, dict):
+                for key in self.preReverseProcessorState:
+                    for instr in self.preReverseProcessorState[key]:
+                        if randomImmediate in instr.string():
+                            self.randomImmediateType = instr.getFeatures()[OPERAND_TYPE.IMMEDIATE.value]
+                            return
+            else:
+                # list handling
+                for instr in self.preReverseProcessorState:
+                    if randomImmediate in instr.string():
+                        self.randomImmediateType = instr.getFeatures()[OPERAND_TYPE.IMMEDIATE.value]
+                        return 
+
 
         def __importSpecialInstructions(self, keyword):
-            liste = []
             if keyword in self.xml_content[INST_LIST]:
-                for instr in self.xml_content[INST_LIST][keyword][INSTR]:
-                    instruction = Instruction(instr)
-                    liste.append(instruction)
-            return liste
+                instruction_list = []
+                if INSTR in self.xml_content[INST_LIST][keyword]:
+                    for instr in self.xml_content[INST_LIST][keyword][INSTR]:
+                        instruction = Instruction(instr, self.instruction_set)
+                        instruction_list.append(instruction)
+                    return instruction_list
+                else:
+                    instruction_dict = {}
+                    for key in self.xml_content[INST_LIST][keyword]:
+                        instruction_dict[key] = []
+                        for instr in self.xml_content[INST_LIST][keyword][key][INSTR]:
+                            instruction = Instruction(instr, self.instruction_set)
+                            instruction_dict[key].append(instruction)
+                    return instruction_dict
+            
+            # if not found in databank, return empty list 
+            # the list is part of the legacy code path!
+            # if removing the legacy code path, make sure this return is sensible
+            return []
+                        
+                        
 
         def _addDictEntry(self, instr):
             self._dict[instr] = copy.deepcopy(self.xml_content[INST_LIST][instr])
@@ -262,12 +318,26 @@ class DataBank:
         def _read_init_register(self) -> list:
             file = open(get_path_instruction(self.architecture))
             parser = xmltodict.parse(file.read())
-            return_list = parser[INST_LIST][INIT][REGISTER]
+            
+            if not REGISTER in parser[INST_LIST][INIT]:
+                self._listInitRegister = {}
+                for KEYWORD in [IMMEDIATE, MEMORY]:
+                    return_list = parser[INST_LIST][INIT][KEYWORD][REGISTER]
 
-            # guarantee a list
-            if not isinstance(return_list, list):
-                return_list = [return_list]
-            self._listInitRegister = return_list
+                    # guarantee a list
+                    if not isinstance(return_list, list):
+                        return_list = [return_list]
+                    self._listInitRegister[KEYWORD] = return_list
+            else:
+                # legacy mode for backward compatibility
+                self._listInitRegister = []
+                return_list = parser[INST_LIST][INIT][KEYWORD][REGISTER]
+
+                # guarantee a list
+                if not isinstance(return_list, list):
+                    return_list = [return_list]
+                self._listInitRegister= return_list
+                
 
         def _readPostInit(self):
             self._listPostInit = {}
@@ -299,9 +369,9 @@ class DataBank:
 
     instance = None
 
-    def __init__(self, architecture="rv32imc"):
+    def __init__(self, architecture="rv32imc", enabled_extensions=""):
         if not DataBank.instance:
-            DataBank.instance = DataBank.__Databank(architecture)
+            DataBank.instance = DataBank.__Databank(architecture, enabled_extensions)
 
     def getTestInstructions(self) -> List[TestInstruction]:
         return self.instance.testinstruction_list
@@ -312,8 +382,15 @@ class DataBank:
     def getGlobalPreSequenceCode(self):
         return self.instance._globalPrePlain
 
-    def getInitRegister(self):
-        return self.instance._listInitRegister
+    def getInitRegister(self, randomize_immediate):
+        if isinstance(self.instance._listInitRegister, dict):
+            if randomize_immediate:
+                return self.instance._listInitRegister[IMMEDIATE]
+            else:
+                return self.instance._listInitRegister[MEMORY]
+        else:
+            return self.instance._listInitRegister
+                
 
     def getPostInitCode(self):
         return self.instance._listPostInit
@@ -334,7 +411,12 @@ class DataBank:
     def getICacheMissTestInstruction(self):
         return self.instance.getICacheMissTestInstruction()
 
-    def assemblyRandomizeRegisterFile(self):
+    def assemblyRandomizeRegisterFile(self, randomize_immediate, start_address=0):
+        '''
+        Randomize Register File
+        :param randomize_immediate: flag to randomize immediate, if false randomize register file from memory
+        :return: Assembly code for randomizing register file
+        '''
         immediateType = Processor().getImmediateDefault()
         self.initRegCounter = 0
         # Initialize all Registers with random value
@@ -343,9 +425,11 @@ class DataBank:
         max_reg_file = reg_rule[NUM_REG_FILES]
         max_reg_size = reg_rule[REG_FILE_SIZE]
 
-        init_csv = self.getInitRegister()
+        init_csv = self.getInitRegister(randomize_immediate)
         IgnoredRegister = Processor().getIgnoreRegister()
 
+
+        address = start_address
         code = ''
         for bank in range(max_reg_file + 1):
             for register in range(max_reg_size + 1):
@@ -353,57 +437,78 @@ class DataBank:
                     continue
                 reg_operand = Processor().createRegisterOperand(bank, register)
                 for instr in init_csv:
-                    immediate = Processor().createRandImmediate(
-                        instr[MANDATORY_FEATURE][IMMEDIATE] if isinstance(instr, dict) and instr[MANDATORY_FEATURE][
-                            IMMEDIATE] else immediateType)
-                    instr = instr[PLACEHOLDER] if isinstance(instr, dict) else instr
-                    instr = instr.replace(OPERANDS.TARGET_REGISTER.value, reg_operand)
-                    instr = instr.replace(OPERANDS.RAND_VALUE.value, immediate)
-                    code += str(instr)
-                    code += '\n'
+                    if randomize_immediate:
+                        immediate = Processor().createRandImmediate(
+                            instr[MANDATORY_FEATURE][IMMEDIATE] if isinstance(instr, dict) and instr[MANDATORY_FEATURE][
+                                IMMEDIATE] else immediateType)
+                        instr = instr[PLACEHOLDER] if isinstance(instr, dict) else instr
+                        instr = instr.replace(OPERANDS.TARGET_REGISTER.value, reg_operand)
+                        instr = instr.replace(OPERANDS.RAND_VALUE.value, immediate)
+                        code += str(instr)
+                        code += '\n'
+                    else:
+                        # randomize register file from memory
+                        instr = instr[PLACEHOLDER] if isinstance(instr, dict) else instr
+                        instr = instr.replace(OPERANDS.TARGET_REGISTER.value, reg_operand)
+                        instr = instr.replace(PROCESSOR_MEMORY_ADDRESS_KEYWORD.upper(), str(address))
+                        code += str(instr)
+                        code += '\n'
+                        address = Processor().get_next_address(address=address)
+                        
 
         code += "\n"
-        if isinstance(self.getPostInitCode(), str):
-            postInit = self.getPostInitCode()
-        else:
-            postInit = "\n".join(self.getPostInitCode())
+        if randomize_immediate:
+            if isinstance(self.getPostInitCode(), str):
+                postInit = self.getPostInitCode()
+            else:
+                postInit = "\n".join(self.getPostInitCode())
 
-        if OPERANDS.BRANCH_INDEX.value in postInit:
-            postInit = postInit.replace(OPERANDS.BRANCH_INDEX.value, str(self.initRegCounter))
-        code += postInit
-        code += "\n"
+            if OPERANDS.BRANCH_INDEX.value in postInit:
+                postInit = postInit.replace(OPERANDS.BRANCH_INDEX.value, str(self.initRegCounter))
+            code += postInit
+            code += "\n"
         code += "\n"
         self.initRegCounter += 1
         return code
 
-    def randomizeProcessorState(self, testInstructionOperands, enabledFeatures):
+    def randomizeProcessorState(self, operands, random_ops):
         if len(self.instance.preReverseProcessorState) == 0:
             return ""
-
-        operands = Processor().generateRandomOperands(enabledFeatures, generateFocusRegister=False,
-                                                      randImmediateExtension=self.instance.randomImmediateType)
-        operands[OPERANDS.FOCUS_REGISTER.value] = testInstructionOperands[OPERANDS.FOCUS_REGISTER.value]
-        operands[OPERANDS.TARGET_REGISTER.value] = testInstructionOperands[OPERANDS.TARGET_REGISTER.value]
-        operands[OPERANDS.RAND_VALUE.value] = testInstructionOperands[OPERANDS.RAND_VALUE.value]
+        
         code = ""
         code += "\n" + Processor().get_assembler_comment() + " randomizing Processor States and Register File\n"
         n = 0
-        for instr in self.instance.preReverseProcessorState:
+        
+
+        if isinstance(self.instance.preReverseProcessorState, dict):
+            key = IMMEDIATE_CONSTANT if random_ops.has_random_processor_state_immediate() else LOAD_CONSTANT
+            pre_reverse_processor_state = self.instance.preReverseProcessorState[key]
+        else:
+            # list handling 
+            # no special consideration for randomizing (only 1 code path)
+            pre_reverse_processor_state = self.instance.preReverseProcessorState
+        
+        for instr in pre_reverse_processor_state:
             instr.setOperands(operands)
             code += instr.string() + "\n"
-            n += 1
+            
+            # if loading from memory, set the memory address
+            # in pre code, there can be ADDRESS that will use the start address and then increment it
+            if str(operands[OPERANDS.ADDRESS.value]) in instr.string():
+                operands[OPERANDS.ADDRESS.value] = Processor().get_next_address(address=operands[OPERANDS.ADDRESS.value])
+                
+            
         # randomize register file
-        code += self.assemblyRandomizeRegisterFile()
+        if random_ops.has_random_processor_method():
+            code += self.assemblyRandomizeRegisterFile(randomize_immediate=random_ops.has_random_processor_state_immediate(), start_address=operands[OPERANDS.ADDRESS.value])
+        
         for instr in self.instance.preReversePostRegInitProcessorState:
             instr.setOperands(operands)
             code += instr.string() + "\n"
 
         return code
 
-    def restoreRandomizedFocusRegister(self, testInstructionOperands, enabledFeatures):
-        operands = Processor().generateRandomOperands(enabledFeatures, generateFocusRegister=False,
-                                                      randImmediateExtension=self.instance.randomImmediateType)
-        operands[OPERANDS.FOCUS_REGISTER.value] = testInstructionOperands[OPERANDS.FOCUS_REGISTER.value]
+    def restoreRandomizedFocusRegister(self, operands):
         code = ""
         n = 0
         for instr in self.instance.postReverseProcessorState:
@@ -411,3 +516,15 @@ class DataBank:
             code += instr.string() + "\n"
             n += 1
         return code
+
+    def get_instruction_list(self):
+        return self.instance.instruction_set
+    
+    def need_random_block_register(self):
+        return len(self.instance.interleaving_random_to_memory) == 0
+    
+    def get_pre_random_to_memory(self):
+        return self.instance.interleaving_random_to_memory[PRE_KEY]
+    
+    def get_post_random_to_memory(self):
+        return self.instance.interleaving_random_to_memory[POST_KEY]

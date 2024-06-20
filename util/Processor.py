@@ -1,5 +1,7 @@
+from multiprocessing import current_process
 import random
 from random import randint, uniform, randrange, shuffle
+from threading import Lock
 from typing import Dict, List, Union
 
 import xmltodict
@@ -19,6 +21,12 @@ class Processor:
             self.proc_infos = self.fetch_xml_data(get_path_processor(architecture))[
                 PROCESSOR]  # content of processor file
             self.instructionXML = self.fetch_xml_data(get_path_instruction(architecture))[INST_LIST]
+            
+            
+            self.has_aligned_memory=  True
+            if MEMORY in self.proc_infos:
+                if MEMORY_ALIGNED in self.proc_infos[MEMORY]:
+                    self.has_aligned_memory = self.proc_infos[MEMORY][MEMORY_ALIGNED].upper() == "TRUE"
 
             # Blocked registers
             self._blocked_registers = []
@@ -76,6 +84,10 @@ class Processor:
             self.maxBranchDistance = -1
             if MAX_BRANCH_DISTANCE in self.proc_infos:
                 self.maxBranchDistance = int(self.proc_infos[MAX_BRANCH_DISTANCE])
+                
+            # start start address of processor state randomziation if available
+            self.start_address_processor_state = 0 if PROCESSOR_START_ADDRESS_PROCESSOR_STATE not in self.proc_infos[PROCESSOR_MEMORY_ADDRESS_KEYWORD] else int(self.proc_infos[PROCESSOR_MEMORY_ADDRESS_KEYWORD][PROCESSOR_START_ADDRESS_PROCESSOR_STATE])
+            
 
             self._readCaches()
 
@@ -120,12 +132,12 @@ class Processor:
             """Sets memory range and format description"""
             self.memory_description = {}
             self.blockedMemoryAddresses = []  # Question: why here if blocked Memory is not used?
-            key = PROCESSOR_MEMORY_KEYWORD
+            key = PROCESSOR_MEMORY_ADDRESS_KEYWORD
             if isinstance(self.proc_infos[key], dict):
                 # get start and end addresses
                 for memoryDescription in MEMORY_DESCRIPTION:
                     if memoryDescription.value in self.proc_infos[key]:
-                        if memoryDescription.value == MEMORY_DESCRIPTION.IMEM_OVERLAP.value:
+                        if memoryDescription.value == MEMORY_DESCRIPTION.IMEM_DMEM_OVERLAP.value:
                             self.memory_description[memoryDescription.value] = True
                         else:
                             self.memory_description[memoryDescription.value] = int(
@@ -179,11 +191,19 @@ class Processor:
         def getInstructionXML(self):
             return self.instructionXML
 
+    _instances = {}
     instance = None
+    _lock = Lock()
 
     def __init__(self, architecture="rv32imc", cacheMiss=0.0, newMemoryBlock=0.0):
-        if not Processor.instance:
-            Processor.instance = Processor.__processorParser(architecture, cacheMiss, newMemoryBlock)
+        with self._lock:
+            process_id = current_process().pid
+            if process_id not in self._instances:
+                Processor._instances[process_id] = Processor.__processorParser(architecture, cacheMiss, newMemoryBlock)
+            self.instance = Processor._instances[process_id]
+    
+    def getBranchTargetLabel(self):
+        return self.instance.branchTargetLabel
 
     def parseInstruction(self, assembly: str) -> list:
         """return [instruction, registerString]"""
@@ -203,8 +223,7 @@ class Processor:
             return {}
         return assembly[MANDATORY_FEATURE]
 
-    def getBranchTargetLabel(self):
-        return self.instance.branchTargetLabel
+
 
     # For Assembly
     def get_instr_features(self, instruction: str) -> dict:
@@ -245,7 +264,12 @@ class Processor:
             Union[str, None]: the assembly code of the instruction attribute   
         """
         try:
-            value = self.instance.proc_infos[feature][instrAttribute]
+            if instrAttribute in self.instance.proc_infos[feature]:
+                value = self.instance.proc_infos[feature][instrAttribute]
+            elif NONE_CONSTANT == instrAttribute:
+                return None
+            else:
+                value = instrAttribute
         except:
             value = None
         return value
@@ -377,6 +401,7 @@ class Processor:
                 tempdict[ISSUE_SLOT] = ':' + str(tempdict[ISSUE_SLOT])
             elif not tempdict[ISSUE_SLOT]:
                 tempdict[SPACE] = ""
+                
 
         # If instruction already have _xx then dont put conditional things
         if ('_' in tempdict[INSTRUCTION]):
@@ -384,21 +409,11 @@ class Processor:
             tempdict[SIMD] = ""
 
         # For Conditional Delimiter
-        tempdict_keys = list(tempdict.keys())
-        temp = -1
-
-        ## Find index of CONDITIONAL_DELIMITER
-        # TODO: Only works for one
-        for key in tempdict_keys:
-            if key == CONDITIONAL_DELIMITER:
-                temp = tempdict_keys.index(key)
-                continue
-
         ## If after cond_delimiter there's no value then no '_'
-        # Question: is this even right?
-        for key in tempdict_keys:
-            index = tempdict_keys.index(key)
-            if index > temp and temp != -1:
+        if CONDITIONAL_DELIMITER in tempdict:
+            delimiter_index = list(tempdict.keys()).index(CONDITIONAL_DELIMITER)
+            has_value_after_cond_delimiter = not all([x == '' for x in list(tempdict.values())[delimiter_index+1:] ])
+            if has_value_after_cond_delimiter:
                 tempdict[CONDITIONAL_DELIMITER] = "_"
 
         # Add all dict to string then return
@@ -407,6 +422,15 @@ class Processor:
                 returnString += str(tempdict[key])
 
         return returnString
+    
+    def get_issue_slot_string(self, enabled_features):
+        if ISSUE_SLOT not in enabled_features:
+            return ""
+        elif isinstance(enabled_features[ISSUE_SLOT], int):
+            return ":" + str(enabled_features[ISSUE_SLOT])
+        else:
+            return ""
+        
 
     # For Operands
     def get_register_rule(self) -> dict:
@@ -504,23 +528,37 @@ class Processor:
 
     def getDefaultOperandType(self) -> dict:
         '''Make dict of operand types.'''
+        operand_type_list = list(vars(OPERAND_TYPE))
         opdict = {}
         for operand in OPERANDS:
             opdict[operand.value] = OPERAND_TYPE.REGISTER
+            
+            # automatically assign all the addresses
+            if PROCESSOR_MEMORY_ADDRESS_KEYWORD.lower() in operand.value.lower():
+                if operand.value in operand_type_list:
+                    opdict[operand.value] = OPERAND_TYPE[operand.value]
+                n=3
+                
 
         opdict[OPERANDS.RAND_IMMEDIATE.value] = OPERAND_TYPE.IMMEDIATE
-
-        # the ordering is important for the correct replacement strategy in assembly
-        opdict[OPERANDS.TEST_ADDRESS.value] = OPERAND_TYPE.TEST_ADDRESS
-        opdict[OPERANDS.INIT_ADDRESS.value] = OPERAND_TYPE.INIT_ADDRESS
-        opdict[OPERANDS.ADDRESS4.value] = OPERAND_TYPE.ADDRESS4
-        opdict[OPERANDS.ADDRESS3.value] = OPERAND_TYPE.ADDRESS3
-        opdict[OPERANDS.ADDRESS2.value] = OPERAND_TYPE.ADDRESS2
-        opdict[OPERANDS.ADDRESS.value] = OPERAND_TYPE.ADDRESS
         opdict[OPERANDS.BRANCH_INDEX.value] = OPERAND_TYPE.BRANCH_INDEX
         opdict[OPERANDS.RAND_IMMEDIATE1.value] = OPERAND_TYPE.IMMEDIATE
         opdict[OPERANDS.RAND_IMMEDIATE2.value] = OPERAND_TYPE.IMMEDIATE
         return opdict
+    
+    def _get_random_free_memory(self, enabledFeatures, start_addr, end_addr):
+        aligned, factor = self._getAligned(enabledFeatures)
+        blocked_addr = set(self.instance.blockedMemoryAddresses)
+        range_addr = set(list(range(start_addr, end_addr+1, aligned)))
+        free_addr = list(range_addr - blocked_addr)
+        if len(free_addr) == 0:
+            raise Exception("There are no free addresses in the dmem left. Consider reducing the test complexity or increasing the dmem size!")
+        addr = random.choice(free_addr)
+        # block address and handle alignment
+        self._block_memory_addresses(addr)
+        return addr
+        
+        
 
     def _checkMemoryBlocked(self, address, aligned, factor, enabledFeatures=None):
         blocked = False
@@ -557,16 +595,14 @@ class Processor:
         return aligned, factor
 
     def createRandomMemoryAddress(self, enabledFeatures=None, consequitive=False):
-        start = 0
-        end = DEFAULT_MAX_MEMORY_ADDRESS
 
-        if MEMORY_DESCRIPTION.OFFSET_ADDRESS.value in self.instance.memory_description:
-            if self.instance.startAddress == -1:
-                raise Exception("Please Set StartAddress. Not doing so may corrupt the testprogram.")
-            start = self.instance.startAddress + self.instance.memory_description[
-                MEMORY_DESCRIPTION.OFFSET_ADDRESS.value]
+        start = self.instance.startAddress
+
         if MEMORY_DESCRIPTION.END_ADDRESS.value in self.instance.memory_description:
             end = self.instance.memory_description[MEMORY_DESCRIPTION.END_ADDRESS.value]
+        else:
+            raise Exception("Please Set EndAddress in processor_{TARGET}.xml - Not doing so may corrupt the testprogram.")
+
 
         aligned, factor = self._getAligned(enabledFeatures)
 
@@ -575,17 +611,11 @@ class Processor:
         else:
 
             if not self._hasDCache():
-                blocked = True
-                while blocked:
-                    address = randrange(start, end, aligned)
-                    blocked = self._checkMemoryBlocked(address, aligned, factor, enabledFeatures)
+                address = self._get_random_free_memory(enabledFeatures, start, end)
             else:
                 prob = random.uniform(0, 1)
                 if prob < self.instance.newMemoryBlock:
-                    blocked = True
-                    while blocked:
-                        address = randrange(start, end, aligned)
-                        blocked = self._checkMemoryBlocked(address, aligned, factor, enabledFeatures)
+                    address = self._get_random_free_memory(enabledFeatures, start, end)
 
                 else:
                     # get address of last word
@@ -609,11 +639,14 @@ class Processor:
                             if not blocked and checkConsequitiveCondition:
                                 blocked = (-1 == self.snoopNextAlignedMemory(address, enabledFeatures))
 
-        # always block full words (block other bytes of the word)
-        for i in range(4):
-            self.instance.blockedMemoryAddresses.append(address + i)
-
+        self._block_memory_addresses(address)
         return address
+
+    def _block_memory_addresses(self, address):
+        alignment, _ = self._getAligned(None)
+        for i in range(alignment):
+            self.instance.blockedMemoryAddresses.append(address + i)
+        
 
     def snoopNextAlignedMemory(self, address, enabledFeatures):
         # chose TEST_ADDRESS in next aligned memory block depending on local alignment (for store halfword and store byte)
@@ -629,16 +662,19 @@ class Processor:
         return newAddress
 
     def getNextAlignedMemoryAddress(self, address, enabledFeatures):
+       
+        if self.instance.has_aligned_memory:
+            newAddress = self.snoopNextAlignedMemory(address, enabledFeatures)
+            if newAddress == -1:
+                raise Exception("2 consequitive Addresses are not avaiable.")
 
-        newAddress = self.snoopNextAlignedMemory(address, enabledFeatures)
-        if newAddress == -1:
-            raise Exception("2 consequitive Addresses are not avaiable.")
-
-        aligned, factor = self._getAligned(enabledFeatures)
-        # block addresses
-        # always block full words (block other bytes of the word)
-        for i in range(aligned * factor):
-            self.instance.blockedMemoryAddresses.append(newAddress + i)
+            aligned, factor = self._getAligned(enabledFeatures)
+            # block addresses
+            # always block full words (block other bytes of the word)
+            for i in range(aligned * factor):
+                self.instance.blockedMemoryAddresses.append(newAddress + i)
+        else:
+            newAddress = self.createRandomMemoryAddress()
 
         return newAddress
 
@@ -745,13 +781,7 @@ class Processor:
         # If type is immediate do:
         elif type == OPERAND_TYPE.IMMEDIATE:
             return self.createRandImmediate(enabledFeatures[IMMEDIATE])
-        elif type == OPERAND_TYPE.ADDRESS:
-            return self.createRandomMemoryAddress()
-        elif type == OPERAND_TYPE.ADDRESS2:
-            return self.createRandomMemoryAddress()
-        elif type == OPERAND_TYPE.ADDRESS3:
-            return self.createRandomMemoryAddress()
-        elif type == OPERAND_TYPE.ADDRESS4:
+        elif PROCESSOR_MEMORY_ADDRESS_KEYWORD in type.value:
             return self.createRandomMemoryAddress()
         elif type == OPERAND_TYPE.BRANCH_INDEX:
             self.instance.branchIndex += 1
@@ -811,6 +841,7 @@ class Processor:
                 immRange = immRange.split(IMM_RANGE.SPLIT.value)
                 value = self.getRangeImmediate(operandAttributes[OPERANDS.ADDRESS.value], immRange,
                                                FORMAT_DESCRIPTION.DEC.value)
+            
             operandString = operandString.replace(operand, str(value))
 
         return operandString
@@ -971,25 +1002,38 @@ class Processor:
     def setStartAddress(self, startAddress):
         """
 
-        :param startAddress: Sets the start Address for the address Generation.
+        :param startAddress: Sets the start Address for the address Generation. Usefull if the imem and dmem are shared (RISC-V)!
         :return: Commented Code describing the startAddress. Can be added to Assembly files for debuggin purposes.
         """
         ''' '''
-        if MEMORY_DESCRIPTION.IMEM_OVERLAP.value in self.instance.memory_description:
+        if MEMORY_DESCRIPTION.IMEM_DMEM_OVERLAP.value in self.instance.memory_description:
             addressAlignment = self.instance.memory_description[ADDRESS_ALIGNMENT]
-            self.instance.startAddress = startAddress * addressAlignment
+            offset = 0
+            if MEMORY_DESCRIPTION.OFFSET_ADDRESS.value in self.instance.memory_description:
+                offset = self.instance.memory_description[MEMORY_DESCRIPTION.OFFSET_ADDRESS.value]
+            self.instance.startAddress = (startAddress + offset) * addressAlignment
             return self.get_assembler_comment() + " Start Address Set to " + str(self.instance.startAddress)
         else:
             self.instance.startAddress = self.instance.memory_description[MEMORY_DESCRIPTION.START_ADDRESS.value]
             return self.get_assembler_comment() + " Default Start ADDRESS " + str(self.instance.startAddress)
 
     def calculateStartAddress(self, testInstructionList):
+        """Only calculate start address if it is needed (for RISC-V) if Dmem and imem have the same address space.
+
+        Args:
+            testInstructionList (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         instructionCount = 0
-        for testInstruction in testInstructionList:
-            counter = testInstruction.calculateEnabledInstructions()
-            instructionCount += counter
+        if MEMORY_DESCRIPTION.IMEM_DMEM_OVERLAP.value in self.instance.memory_description:
+            for testInstruction in testInstructionList:
+                counter = testInstruction.calculateEnabledInstructions()
+                instructionCount += counter
 
         return Processor().setStartAddress(instructionCount)
+        
 
     def getProcessorFeatureAssembly(self, feature, value):
 
@@ -999,25 +1043,6 @@ class Processor:
         else:
             return assembly
 
-    # def getAssemlby2Feature(self, assembly):
-    #
-    #     if assembly:
-    #         for instrFeature in INSTRUCTION_SPECIAL_FEATURE:
-    #             if instrFeature not in self.instance.proc_infos:
-    #                 return None
-    #             else:
-    #                 for key, value in self.instance.proc_infos[instrFeature].items():
-    #                     if value:
-    #                         if assembly in value:
-    #                             return key
-    #
-    #         for instrFeature in INSTRUCTION_FEATURE_LIST:
-    #             if instrFeature in self.instance.proc_infos:
-    #                 for key, value in self.instance.proc_infos[instrFeature].items():
-    #                     if assembly in key:
-    #                         return value
-    #     else:
-    #         return None
 
     def getImmediateDefault(self) -> str:
         """returns the default type for immediate from pocessor descrption
@@ -1041,3 +1066,40 @@ class Processor:
 
     def hasIMemJump(self):
         return bool(self.instance.iCacheSpec)
+
+    def get_delimiter_list(self):
+        return [ x for x in list(self.instance.assembly_structure.values()) if x is not None]
+    
+    def get_immediate_assembly(self):
+        return [x for x in list(self.instance.immediate.values()) if x is not None]
+    
+    def get_next_address(self, address):
+        alignment, _ = self._getAligned(None)
+        return address + alignment
+    
+    def get_processor_state_random_start_address(self):
+        #todo: add proper start address
+        return self.instance.start_address_processor_state
+        
+    
+    def find_base_instruction(self, inst_name, instruction_set):
+        inst_name = inst_name.lower()
+        # Sort the instructions by length in descending order to prioritize longer matches first
+        instructions_sorted = sorted(instruction_set, key=len, reverse=True)
+        
+        # Check for the longest match at the start of inst_name
+        for instruction in instructions_sorted:
+            if inst_name.startswith(instruction):
+                # Check if the remaining part of inst_name is not part of another instruction
+                remaining = inst_name[len(instruction):]
+                if not any(remaining.startswith(other) for other in instruction_set if other != instruction):
+                    return instruction
+        
+        raise Exception("No base instruction found for instruction: " + inst_name)
+    
+    
+    def set_block_register(self, register):
+        self.instance._blocked_registers.append(register)
+    
+    def get_block_register(self):
+        return self.instance._blocked_registers

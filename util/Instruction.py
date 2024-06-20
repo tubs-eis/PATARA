@@ -4,10 +4,9 @@ import warnings
 from Constants import OPERANDS
 from util.Processor import Processor
 
-
 class Instruction:
 
-    def __init__(self, assembly: str, mutable=True):
+    def __init__(self, assembly: str, instruction_set, mutable=True):
         # set default enabled features
         self.isRandValueRandomImmediate = False
         self.globalMandatoryFeatures = {}
@@ -17,6 +16,8 @@ class Instruction:
 
         self.mandatoryEnabledFeatures = Processor().getMandatoryFeatures(assembly)
         self.inst_name = self.parsestring[0]
+        # if instruction is already modified, then it is not mutable (i.e. MVIL_32)
+        self._is_instruction_mutable(instruction_set)
 
         self.features = self.getFeatures()
         self._enabledfeatures = {}
@@ -29,6 +30,29 @@ class Instruction:
         self._operandStrings = self.parsestring[1]
         self._originalOperandString = copy.deepcopy(self.parsestring[1])
         self.interleavingTargetRegister = None
+        
+        # parse immediate features
+        self.allows_immediate = self.parsestring[1].split(",")[-1].strip() == OPERANDS.RAND_VALUE.value
+    
+    def _is_instruction_mutable(self, instruction_list):
+        if self.mutable:
+            if self.inst_name.startswith("--"):
+                self.mutable = False
+            elif any(x in self.inst_name for x in Processor().get_delimiter_list()):
+                self.mutable = False
+            elif any([self.inst_name.lower().endswith(x) for x in Processor().get_immediate_assembly()]):
+                # check if instruction ends with I or IL (also not mutable)
+                try:
+                    found_base_instruction = Processor().find_base_instruction(self.inst_name, instruction_list)
+                    self.mutable = found_base_instruction == self.inst_name
+                except Exception as e:
+                    warnings.warn(f"Instruction {self.inst_name} not found in instruction list")
+                    self.mutable = False
+                    
+            
+
+                
+                
 
     def getFeatures(self):
         instructionName = None
@@ -47,7 +71,7 @@ class Instruction:
     def get_operand_attr(self):
         return self._operandAttr
 
-    def getEnabledFeatures(self):
+    def get_enabled_features(self):
         return self._enabledfeatures
 
     def setFeatures(self, features):
@@ -99,7 +123,7 @@ class Instruction:
 
         self._setInstructionAssembly()
 
-    def resetFeatures(self):
+    def set_default_feature_values(self):
         if self.features is None:
             return
         for key in self.features:
@@ -111,6 +135,11 @@ class Instruction:
             self.overrideMandatoryFeatures()
             self._instruction = Processor().getInstructionAssemblyString(self.parsestring[0],
                                                                          self._enabledfeatures)
+        # else:
+        #     # Issue slot will always be set, even if instruction is not mutable!
+        #     self.overrideMandatoryFeatures()
+        #     self._instruction = Processor().get_issue_slot_string(self._enabledfeatures) + self._instruction
+            
 
         if OPERANDS.BRANCH_INDEX.value in self._instruction:
             if OPERANDS.BRANCH_INDEX.value in self._operandAttr:
@@ -143,3 +172,7 @@ class Instruction:
 
     def getRawAssembly(self):
         return self._assembly
+    
+    def has_allows_immediate(self):
+        return self.allows_immediate
+        

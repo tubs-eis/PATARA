@@ -11,8 +11,11 @@ class TestInstruction:
     def __init__(self, originalInstructions: List[str], preplainInstr: List[str], plainInstructions: List[str],
                  postPlainInstructions: List[str], reverseInstructions: Dict[str, List[str]], instruction: str,
                  specialization, validInstructionList, immediateReverseAssembly: List[Instruction], type: str,
-                 specialImmediates: List[int], icacheMissCandidate=False, iCacheRepetition=[]):
+                 specialImmediates: List[int], instruction_set:List[str], icacheMissCandidate=False, iCacheRepetition=[], signed_unsigned=False):
         self.instruction = instruction
+        self.instruction_set = instruction_set
+        self.signed_unsigned = signed_unsigned
+        
         self.validInstructionList = validInstructionList
         self.operandAttributes = {}
         self.immediateReverseAssembly = immediateReverseAssembly  # just immediate assembly from DataBank
@@ -21,18 +24,18 @@ class TestInstruction:
         self.globalMandatoryFeatures = {}
         self.globalMandatoryFeatures[ISSUE_SLOT] = Processor().getRandomIssueSlot()
         for originalInstruction in originalInstructions:
-            originalInstr.append(Instruction(originalInstruction))
+            originalInstr.append(Instruction(originalInstruction, instruction_set))
         self._modInstructions: List[Instruction] = originalInstr  # List of OriginalInstruction classes
         plainInstr = []
         for plainInstruction in plainInstructions:
-            plainInstr.append(Instruction(plainInstruction))
+            plainInstr.append(Instruction(plainInstruction, instruction_set))
         self._sequenceInstructions: List[Instruction] = plainInstr
         self._preSequenceInstructions: List[Instruction] = []
         for instr in preplainInstr:
-            self._preSequenceInstructions.append(Instruction(instr))
+            self._preSequenceInstructions.append(Instruction(instr, instruction_set))
         self._postPlainInstructions: List[Instruction] = []
         for instr in postPlainInstructions:
-            self._postPlainInstructions.append(Instruction(instr))
+            self._postPlainInstructions.append(Instruction(instr, instruction_set))
         self._importReverseInstructions(reverseInstructions)
         self._importSpecialization(specialization)
         self._checkNewPlainTargetReg()
@@ -44,9 +47,11 @@ class TestInstruction:
         self.iCacheJump = False
         self.iCacheRepetition = []
         for instr in iCacheRepetition:
-            self.iCacheRepetition.append(Instruction(instr))
+            self.iCacheRepetition.append(Instruction(instr, instruction_set))
         self._enabledFeatures = {}
         self.type = type
+        
+        
 
     def _checkNewPlainTargetReg(self):
         self.newSequenceTargetReg = False
@@ -136,7 +141,8 @@ class TestInstruction:
                                                                                  subSpecialization,
                                                                                  self.validInstructionList,
                                                                                  self.immediateReverseAssembly, type="",
-                                                                                 specialImmediates=intImms)
+                                                                                 specialImmediates=intImms,
+                                                                                 instruction_set=self.instruction_set, signed_unsigned=self.signed_unsigned)
 
     def _generateSpecialImmediates(self, temp):
         intImms = []
@@ -168,11 +174,11 @@ class TestInstruction:
     def _importReverseInstructions(self, reverseInstructions: Dict[str, List[str]]):  # Dict[str, List[str]]):
         self.reverseMutable = True
 
-        self._reverseInstructions: [Dict[str, List[Instruction]]] = {}
+        self._reverseInstructions: [Dict[str, List[Instruction]]] = {} # type: ignore
         for simd in reverseInstructions:
             self._reverseInstructions[simd] = []
             for reverseInstruction in reverseInstructions[simd]:
-                self._reverseInstructions[simd].append(Instruction(reverseInstruction, self.reverseMutable))
+                self._reverseInstructions[simd].append(Instruction(reverseInstruction, instruction_set=self.instruction_set, mutable=self.reverseMutable))
 
     def getTargetOperand(self) -> str:
         return self.operandAttributes[OPERANDS.TARGET_REGISTER.value]
@@ -192,24 +198,29 @@ class TestInstruction:
     def getOperands(self):
         return self.operandAttributes
 
-    def getTransferableEnabledFeatures(self):
+    def getTransferableEnabledFeatures(self, instruction_enabled_features):
         transfereableEnabled = {}
         for feature in self._enabledFeatures:
             if (feature != CONDITIONAL and feature != CONDITIONAL_READ):
                 transfereableEnabled[feature] = self._enabledFeatures[feature]
+        
+        if IMMEDIATE in instruction_enabled_features and transfereableEnabled[IMMEDIATE] != instruction_enabled_features[IMMEDIATE]:
+            transfereableEnabled[IMMEDIATE] = instruction_enabled_features[IMMEDIATE]
         return transfereableEnabled
 
-    def getTransferableReversiEnabledFeatures(self):
+    def getTransferableReversiEnabledFeatures(self, instruction: Instruction):
         """
 
         :return: Do not transfer immediate features to reversi code
         """
 
-        transfereableEnabled = self.getTransferableEnabledFeatures()
-        transfereableEnabled[IMMEDIATE] = None
+        transfereableEnabled = self.getTransferableEnabledFeatures(instruction.get_enabled_features())
+        if not instruction.has_allows_immediate():
+            transfereableEnabled[IMMEDIATE] = None
+        
         return transfereableEnabled
 
-    def generateModificationCode(self, sequenceDebugInfo=-1) -> str:
+    def generateModificationCode(self, sequenceDebugInfo=-1, pre_instructions=[]) -> str:
         if self._enabledFeaturesUseSpecialization():
             specializedTestInstruction: TestInstruction = self._getSpecializationTestInstruction()
             specializedTestInstruction.copyEnabledFeatures(self._enabledFeatures)
@@ -219,7 +230,7 @@ class TestInstruction:
                 specializedTestInstruction.setTargetRegister(self.interleavingTargetRegister)
             if not self.generateCode:
                 specializedTestInstruction.generateCode = False
-            code = specializedTestInstruction.generateModificationCode()
+            code = specializedTestInstruction.generateModificationCode(sequenceDebugInfo=sequenceDebugInfo, pre_instructions=pre_instructions)
             if not self.generateCode:
                 specializedTestInstruction.generateCode = True
             return code
@@ -236,16 +247,23 @@ class TestInstruction:
 
         else:
             code = ""
-            code += self.addImmediateCode()
-            code += self.addInstructionPreConditionCode()
             code += Processor().get_assembler_comment() + self.getInstruction()
             if sequenceDebugInfo > -1:
-                code += " " + str(sequenceDebugInfo)
+                code += " --" + str(sequenceDebugInfo)
             code += "\n"
+            
+            code += self.addImmediateCode()
+            # immediate code will modify randValue, therefore storing it has to be performed, after the immediate code was executed
+            for instr in pre_instructions:
+                code += Processor().get_assembler_comment() + "Pre Instruction\n"
+                instr.setOperands(self.operandAttributes)
+                code += instr.string() + "\n"
+            code += self.addInstructionPreConditionCode()
+            
 
             for originalInstruction in self._modInstructions:
                 self.instructionCount += 1
-                originalInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+                originalInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(originalInstruction))
                 self.replaceRandValueWithImmediate(originalInstruction)
 
                 if self.isMainInstruction(originalInstruction):
@@ -278,7 +296,7 @@ class TestInstruction:
         code = ""
         for plainInstruction in self._preSequenceInstructions:
             self.instructionCount += 1
-            plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+            plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(plainInstruction))
             if self.generateCode:
                 self.replaceRandValueWithImmediate(plainInstruction)
                 plainInstruction.setOperands(self.operandAttributes)
@@ -309,7 +327,7 @@ class TestInstruction:
         for plainInstruction in self._sequenceInstructions:
             self.instructionCount += 1
             if self.generateCode:
-                plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+                plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(plainInstruction))
                 self.replaceRandValueWithImmediate(plainInstruction)
 
                 if self.isMainInstruction(plainInstruction):
@@ -328,7 +346,7 @@ class TestInstruction:
             plainInstruction = self.iCacheRepetition[index]
             self.instructionCount += 1
             if self.generateCode:
-                plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+                plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(plainInstruction))
                 self.replaceRandValueWithImmediate(plainInstruction)
 
                 plainInstruction.setGlobalMandatoryFeatures(self.globalMandatoryFeatures)
@@ -339,7 +357,7 @@ class TestInstruction:
         # Repeat Destroy Instruction to evict caches lines
         plainInstruction = self.iCacheRepetition[-2]
         if self.generateCode:
-            plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+            plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(plainInstruction))
             self.replaceRandValueWithImmediate(plainInstruction)
 
             plainInstruction.setGlobalMandatoryFeatures(self.globalMandatoryFeatures)
@@ -355,7 +373,7 @@ class TestInstruction:
 
         # set Branch Target
         plainInstruction = self.iCacheRepetition[-1]
-        plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+        plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(plainInstruction))
         if self.generateCode:
             self.replaceRandValueWithImmediate(plainInstruction)
 
@@ -383,7 +401,7 @@ class TestInstruction:
         for plainInstruction in self._postPlainInstructions:
             self.instructionCount += 1
             if self.generateCode:
-                plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures())
+                plainInstruction.setFeatures(self.getTransferableReversiEnabledFeatures(plainInstruction))
                 self.replaceRandValueWithImmediate(plainInstruction)
                 plainInstruction.setOperands(self.operandAttributes)
 
@@ -403,11 +421,15 @@ class TestInstruction:
     def isMainInstruction(self, instruction):
         return instruction.getName().lower() == self.instruction
 
-    def replaceRandValueWithImmediate(self, instruction):
+    def replaceRandValueWithImmediate(self, instruction: Instruction):
         if self.isMainInstruction(instruction):
             if self._enabledFeatures[IMMEDIATE]:
-                instruction.setFeatures(self.getTransferableEnabledFeatures())
+                instruction.setFeatures(self.getTransferableEnabledFeatures(instruction.get_enabled_features()))
                 instruction.enableRandValueRandomImmediate()
+        else:
+            # if not main instruction, do not replace random values with immediates
+            # therefore disable immediate in enabled features
+            instruction.setEnabledFeatures(IMMEDIATE, None)
 
     def _selectSpecializationCode(self, function):
         '''
@@ -429,8 +451,31 @@ class TestInstruction:
             if not self.generateCode:
                 specializedTestInstruction.generateCode = True
             return code
+        
+    def _check_branch_targets(self, asm):
+        """Santiy check, if all labels have the same branch target index
 
-    def generateReversiCode(self, sequenceDebugInfo=-1) -> str:
+        Args:
+            asm (str): result of the reversi or modification code
+
+        Raises:
+            Exception: Raises exception, when branch targets are not valid
+        """
+        indices = []
+        for line in asm.split("\n"):
+            if "_" in line:
+                # get brnach index (last element)
+                branch_index = line.strip().split("_")[-1]
+                if "," in branch_index:
+                    branch_index = branch_index.split(",")[0]
+                # if this is an integer, add to inidces
+                if branch_index.isdigit():
+                    indices.append(int(branch_index))
+        
+        if len(set(indices)) > 1:
+            raise Exception(f"Branch targets are not the same in sequence and reverse sequence\n{asm}\n{set(indices)}")
+
+    def generateReversiCode(self, sequenceDebugInfo=-1, pre_instructions=[]) -> str:
         if self.iCacheJump:
             return ""
         else:
@@ -443,35 +488,48 @@ class TestInstruction:
                     specializedTestInstruction.setTargetRegister(self.interleavingTargetRegister)
                 if not self.generateCode:
                     specializedTestInstruction.generateCode = False
-                code = specializedTestInstruction.generateReversiCode()
+                code = specializedTestInstruction.generateReversiCode(sequenceDebugInfo=sequenceDebugInfo, pre_instructions=pre_instructions)
                 if not self.generateCode:
                     specializedTestInstruction.generateCode = True
                 # test moving stuff to functions for nicer code
                 # controlCode = self._selectSpecializationCode(self._getSpecializationTestInstruction().generateReversiCode())
                 # if code != controlCode:
                 #     n=3
+                self._check_branch_targets(code)
                 return code
             code = ""
+            code = ""
+            code += Processor().get_assembler_comment() + self.getInstruction()
+            if sequenceDebugInfo > -1:
+                code += " --" + str(sequenceDebugInfo)
+            code += "\n"
+            
+            for instr in pre_instructions:
+                instr.setOperands(self.operandAttributes)
+                code += instr.string() + "\n"
+                
             simdMode = self._getReversiSIMDMode()
 
             if self.generateCode:
                 self._setReverseRegister(simdMode, self.operandAttributes)
+
             code += self.addReversePreConditionCode()
             code += self.addImmediateCode()
-            if sequenceDebugInfo > -1:
-                code += Processor().get_assembler_comment() + "REVERSE:" + self.getInstruction() + " " + str(
-                    sequenceDebugInfo) + "\n"
-            else:
-                code += Processor().get_assembler_comment() + "REVERSE:" + self.getInstruction() + "\n"
 
-            for reverseInstruction in self._reverseInstructions[simdMode]:
+            for i, reverseInstruction in enumerate(self._reverseInstructions[simdMode]):
                 self.instructionCount += 1
                 if self.generateCode:
                     self.replaceRandValueWithImmediate(reverseInstruction)
-                    code += reverseInstruction.getAssembly(enabledFeatures=self.getTransferableReversiEnabledFeatures(),
+                    code += reverseInstruction.getAssembly(enabledFeatures=self.getTransferableReversiEnabledFeatures(reverseInstruction),
                                                            globalMandatoryFeatures=self.globalMandatoryFeatures)
                     code += "\n"
+
             code += self.addReversePostConditionCode()
+            code += Processor().get_assembler_comment() +" END "+ self.getInstruction()
+            if sequenceDebugInfo > -1:
+                code += " --" + str(sequenceDebugInfo)
+            code += "\n"
+            self._check_branch_targets(code)
             return code
 
     def _getSpecializationTestInstruction(self):
@@ -490,7 +548,16 @@ class TestInstruction:
                 if simd == V_MUTABLE:
                     for instr in self.immediateReverseAssembly[self._enabledFeatures[IMMEDIATE]][V_MUTABLE]:
                         instr.setEnabledFeatures(SIMD, self._enabledFeatures[SIMD])
-                        instr.setEnabledFeatures(SIGNAGE, self._enabledFeatures[SIGNAGE])
+                        
+                        # Instruction is signed, but immedidates are unsigned extended. 
+                        # AND/OR is treaded as signed, however the immediate is unsign extended. 
+                        # This keyword makes sure the sign extension in immediate handling is unsigned, 
+                        # even through the instruction indicates signed!
+                        if self.signed_unsigned:
+                            instr.setEnabledFeatures(SIGNAGE, SIGNAGE_UNSIGNED)
+                        else:
+                            instr.setEnabledFeatures(SIGNAGE, self._enabledFeatures[SIGNAGE])
+                            
                         instr.setEnabledFeatures(IMMEDIATE, self._enabledFeatures[IMMEDIATE])
                         if self.generateCode:
                             instr.setOperands(self.operandAttributes)
@@ -500,7 +567,17 @@ class TestInstruction:
                     if self._enabledFeatures[SIMD] in simd:
                         for instr in self.immediateReverseAssembly[self._enabledFeatures[IMMEDIATE]][simd]:
                             instr.setEnabledFeatures(SIMD, self._enabledFeatures[SIMD])
-                            instr.setEnabledFeatures(SIGNAGE, self._enabledFeatures[SIGNAGE])
+                            
+                            # Instruction is signed, but immedidates are unsigned extended. 
+                            # AND/OR is treaded as signed, however the immediate is unsign extended. 
+                            # This keyword makes sure the sign extension in immediate handling is unsigned, 
+                            # even through the instruction indicates signed!
+                            if self.signed_unsigned:
+                                instr.setEnabledFeatures(SIGNAGE, SIGNAGE_UNSIGNED)
+                            else:
+                                instr.setEnabledFeatures(SIGNAGE, self._enabledFeatures[SIGNAGE])
+                        
+                            
                             instr.setEnabledFeatures(IMMEDIATE, self._enabledFeatures[IMMEDIATE])
                             if self.generateCode:
                                 instr.setOperands(self.operandAttributes)
@@ -513,12 +590,12 @@ class TestInstruction:
 
     def reset_features(self):
         for instr in self._modInstructions:
-            instr.resetFeatures()
+            instr.set_default_feature_values()
         for instr in self._sequenceInstructions:
-            instr.resetFeatures()
+            instr.set_default_feature_values()
         if self.reverseMutable:
             for instr in self._reverseInstructions[V_MUTABLE]:
-                instr.resetFeatures()
+                instr.set_default_feature_values()
         else:
             raise Exception("How to handle SIMD enabling features?")
 
@@ -649,17 +726,17 @@ class TestInstruction:
     def _setOperationRegister(self, operandAttributes):
         self.operandAttributes = operandAttributes
         for instr in self._modInstructions:
-            instr.resetFeatures()
+            instr.set_default_feature_values()
             if instr.getName().lower() in self.validInstructionList:
                 instr.setFeatures(self._enabledFeatures)
             instr.setOperands(self.operandAttributes)
         for instr in self._sequenceInstructions:
-            instr.resetFeatures()
+            instr.set_default_feature_values()
             if instr.getName().lower() in self.validInstructionList:
                 instr.setFeatures(self._enabledFeatures)
             instr.setOperands(self.operandAttributes)
         for instr in self.iCacheRepetition:
-            instr.resetFeatures()
+            instr.set_default_feature_values()
             if instr.getName().lower() in self.validInstructionList:
                 instr.setFeatures(self._enabledFeatures)
             instr.setOperands(self.operandAttributes)
@@ -667,7 +744,7 @@ class TestInstruction:
     def _setReverseRegister(self, simdMode, operandAttributes):
         self.operandAttributes = operandAttributes
         for rev_instr in self._reverseInstructions[simdMode]:
-            rev_instr.resetFeatures()
+            rev_instr.set_default_feature_values()
             if rev_instr.getName().lower() in self.validInstructionList:
                 rev_instr.setFeatures(self._enabledFeatures)
             rev_instr.setOperands(self.operandAttributes)
@@ -712,22 +789,25 @@ class TestInstruction:
         Works before code is generated!!!!!!!!!!!!!
         :return:
         """
-        self.generateCode = False
-        if standardReversi:
-            self.generateModificationCode()
-            self.generateReversiCode()
-            if sequence:
-                self.generatePreSequenceCode()
+        if MEMORY_DESCRIPTION.IMEM_DMEM_OVERLAP.value in Processor().instance.memory_description:
+            self.generateCode = False
+            if standardReversi:
+                self.generateModificationCode()
+                self.generateReversiCode()
+                if sequence:
+                    self.generatePreSequenceCode()
+                    self.generateSequenceCode()
+                    self.generatePostSequenceCode()
+            elif sequenceHole:
+                self.generateModificationCode()
                 self.generateSequenceCode()
-                self.generatePostSequenceCode()
-        elif sequenceHole:
-            self.generateModificationCode()
-            self.generateSequenceCode()
 
-        self.generateCode = True
-        instr = self.getInstructionCount()
-        self._resetInstructionCount()
-        return instr
+            self.generateCode = True
+            instruction_count = self.getInstructionCount()
+            self._resetInstructionCount()
+            return instruction_count
+        else:
+            return 0
 
     def _resetInstructionCount(self):
         self.instructionCount = 0
@@ -757,8 +837,12 @@ class TestInstruction:
                     instruction.setOperands(self.operandAttributes)
                     if hasOverridingTargetRegister:
                         instruction.setOverrideTargetOperand(self.interleavingTargetRegister)
-                    code += instruction.getAssembly(enabledFeatures=self.getTransferableReversiEnabledFeatures(),
+                    if instruction._operandAttr[OPERANDS.BRANCH_INDEX.value] != self.operandAttributes[OPERANDS.BRANCH_INDEX.value]:
+                        n=3
+                    code += instruction.getAssembly(enabledFeatures=self.getTransferableReversiEnabledFeatures(instruction),
                                                     globalMandatoryFeatures=globalMandatoryFeatures)
+                    if instruction._operandAttr[OPERANDS.BRANCH_INDEX.value] != self.operandAttributes[OPERANDS.BRANCH_INDEX.value]:
+                        n=3
                     code += "\n"
             return code
 

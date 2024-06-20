@@ -1,3 +1,4 @@
+import copy
 from typing import List
 
 import xmltodict
@@ -8,14 +9,15 @@ from util.Instruction import Instruction
 
 class ConditionalExecutionCode:
     class __ConditionalExecutionCode:
-        def __init__(self, architecture):
+        def __init__(self, architecture, instruction_list):
             self.conditionalData = {}
+            self.instruction_set = instruction_list
             self.initialize(architecture)
 
         def _createInstructionList(self, instructionList):
             result = []
             for instr in instructionList:
-                result.append(Instruction(instr))
+                result.append(Instruction(instr, self.instruction_set))
             return result
 
         def initialize(self, architecture):
@@ -51,18 +53,18 @@ class ConditionalExecutionCode:
 
     instance = None
 
-    def __init__(self, architecture="rv32imc"):
+    def __init__(self, architecture="rv32imc", instruction_set=[]):
         if not ConditionalExecutionCode.instance:
-            ConditionalExecutionCode.instance = ConditionalExecutionCode.__ConditionalExecutionCode(architecture)
+            ConditionalExecutionCode.instance = ConditionalExecutionCode.__ConditionalExecutionCode(architecture, instruction_set)
         n = 3
 
     def getPreInstruction(self, simdAssembly, conditionFlag) -> List[Instruction]:
         conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_PRE_INSTRUCTION]
         if conditionCode:
             if simdAssembly in conditionCode:
-                return conditionCode[simdAssembly]
+                return copy.deepcopy(conditionCode[simdAssembly])
             else:
-                return conditionCode[V_MUTABLE]
+                return copy.deepcopy(conditionCode[V_MUTABLE])
         else:
             return None
 
@@ -70,9 +72,9 @@ class ConditionalExecutionCode:
         conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_POST_INSTRUCTION]
         if conditionCode:
             if simdAssembly in conditionCode:
-                return conditionCode[simdAssembly]
+                return copy.deepcopy(conditionCode[simdAssembly])
             else:
-                return conditionCode[V_MUTABLE]
+                return copy.deepcopy(conditionCode[V_MUTABLE])
         else:
             return None
 
@@ -80,9 +82,9 @@ class ConditionalExecutionCode:
         conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_PRE_REVERSE]
         if conditionCode:
             if simdAssembly in conditionCode:
-                return conditionCode[simdAssembly]
+                return copy.deepcopy(conditionCode[simdAssembly])
             else:
-                return conditionCode[V_MUTABLE]
+                return copy.deepcopy(conditionCode[V_MUTABLE])
         else:
             return None
 
@@ -90,9 +92,9 @@ class ConditionalExecutionCode:
         conditionCode = self.instance.conditionalData[conditionFlag][CONDITION_POST_REVERSE]
         if conditionCode:
             if simdAssembly in conditionCode:
-                return conditionCode[simdAssembly]
+                return copy.deepcopy(conditionCode[simdAssembly])
             else:
-                return conditionCode[V_MUTABLE]
+                return copy.deepcopy(conditionCode[V_MUTABLE])
         else:
             return None
 

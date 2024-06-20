@@ -9,6 +9,7 @@ class OPERAND_TYPE(Enum):
     ADDRESS2 = "address2"
     ADDRESS3 = "address3"
     ADDRESS4 = "address4"
+    ADDRESS5 = "address5"
     ADDRESS = "address"
     BRANCH_INDEX = "BRANCH_INDEX"
 
@@ -29,6 +30,7 @@ class OPERANDS(Enum):
     ADDRESS2 = 'ADDRESS2'
     ADDRESS3 = 'ADDRESS3'
     ADDRESS4 = 'ADDRESS4'
+    ADDRESS5 = 'ADDRESS5'
     ADDRESS = 'ADDRESS'
     BRANCH_INDEX = "BRANCH_INDEX"
     RAND_IMMEDIATE = "randImmediate"
@@ -56,6 +58,8 @@ MAX_SIZE = "max_size"
 ASSEMBLY_STRUCTURE = "assembly-structure"
 IMMEDIATE = 'immediate'
 IMMEDIATE_OPERAND = 'immediate-operand'
+
+## instruction keywords
 SIGNAGE = "signage"
 SIMD = "simd"
 FLAGS = "flags"
@@ -66,6 +70,13 @@ CONDITIONAL_READ = "conditional-read"
 CONDITIONAL_SET = "conditional-set"
 CONDITIONAL_SET_READ = "conditional-read-set"
 SATURATION = "saturation"
+SATURATION_SATURATION = "saturation"
+SATURATION_OVERFLOW = "overflow"
+SIGNED_UNSIGNED = "signed_unsigned"
+SIGNAGE_SIGNED = "signed"
+SIGNAGE_UNSIGNED = "unsigned"
+ISA_EXTENSION = "isa_extension"
+
 ADDRESS_ALIGNMENT = "aligned"
 SWITCH = "switch"
 D_CACHE = "d-cache"
@@ -75,6 +86,10 @@ CACHE_BYTE_PER_LINE = "BytePerLine"
 CACHE_ASSOCIATION = "associative"
 CACHE_WORD_SIZE_BITS = "word-size-bits"
 I_CACHE_MISS_CANDIDATE = "icacheMiss"
+MEMORY = "memory"
+MEMORY_ALIGNED = "aligned"
+IMMEDIATE_CONSTANT = "immediate"
+LOAD_CONSTANT = "load"
 
 MANDATORY_FEATURE = "enable"
 
@@ -92,7 +107,8 @@ class IMM_RANGE(Enum):
     SPLIT = ":"
 
 
-PROCESSOR_MEMORY_KEYWORD = "address"
+PROCESSOR_MEMORY_ADDRESS_KEYWORD = "address"
+PROCESSOR_START_ADDRESS_PROCESSOR_STATE = 'start_addr_proc_state'
 
 
 class MEMORY_DESCRIPTION(Enum):
@@ -100,7 +116,7 @@ class MEMORY_DESCRIPTION(Enum):
     OFFSET_ADDRESS = "offset"
     END_ADDRESS = "end"
     ALIGNED = "aligned"
-    IMEM_OVERLAP = "imem-overlap"
+    IMEM_DMEM_OVERLAP = "imem-overlap"
 
 
 DEFAULT_MAX_MEMORY_ADDRESS = 2 ** 12 - 1
@@ -123,14 +139,20 @@ PRE_SEQUENCE_INSTR = "pre-sequence-instr"
 SEQUENCE_INSTR = 'sequence-instr'
 SEQUENCE_INSTR_CACHE_REPETITION = "sequence-instr-icache"
 POST_SEQUENCE_INSTR = "post-sequence-instr"
-PROCESSOR = "processor"
+INTERLEAVING_RANDOM_TO_MEMORY = "interleaving_random_to_memory"
+PRE_KEY = "pre"
+POST_KEY = "post"
 SPECIALIZATION = "specialization"
+
+PROCESSOR = "processor"
+
 MAX_BRANCH_DISTANCE = "max-conditional-branch-distance"
 FIX_IMM_VALUE = "fixed-imm-value"
 SPECIAL_IMMEDIATES = "special-immediates"
 INSTRUCTION_TYPE = "type"
 MULTI_CYCLE_INSTRUCTION_TYPE = "-M"
 NOP_INSTR = "nop"
+NONE_CONSTANT = "None"
 
 ADDRESS = 'ADDRESS'
 
@@ -154,18 +176,20 @@ def get_path_instruction(architecture):
     return 'targets/' + architecture + '/instructions_' + architecture + '.xml'
 
 
-def get_path_header(architecture, simulator=False):
-    if simulator:
-        return 'targets/' + architecture + '/header_venus_' + architecture + '.s'
-    else:
-        return 'targets/' + architecture + '/header_' + architecture + '.s'
+def get_path_header(architecture, random_opts, header_path=""):
+    if header_path != "":
+        return header_path
+    
+    header_string = "_randomized" if random_opts.has_random_init_reg_file() else "_not_randomized"
+    return 'targets/' + architecture + '/header_' + architecture + header_string + '.s'
 
 
-def get_path_footer(architecture, simulator=False):
-    if simulator:
-        return 'targets/' + architecture + '/footer_venus_' + architecture + '.s'
-    else:
-        return 'targets/' + architecture + '/footer_' + architecture + '.s'
+def get_path_footer(architecture, random_opts, footer_path=""):
+    if footer_path != "":
+        return footer_path
+    
+    footer_string = "_randomized" if random_opts.has_random_init_reg_file() else "_not_randomized"
+    return 'targets/' + architecture + '/footer_' + architecture + footer_string + '.s'
 
 
 INSTRUCTION_DEFAULT_MODES = "default"
@@ -178,3 +202,6 @@ CONDITION_PRE_INSTRUCTION = "pre-instruction"
 CONDITION_POST_INSTRUCTION = "post-instruction"
 CONDITION_PRE_REVERSE = "pre-reverse"
 CONDITION_POST_REVERSE = "post-reverse"
+
+
+TEST_ENABLED = False

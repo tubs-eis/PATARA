@@ -17,6 +17,7 @@
         <immediate>None/i12</immediate>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -36,6 +37,7 @@
         <signage>signed</signage>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -72,7 +74,7 @@
         <immediate>None/i5</immediate>
         <switch>None/true</switch>
         <type>R</type>
-
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -139,6 +141,7 @@
         <immediate>None/i5</immediate>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -210,6 +213,7 @@
         <immediate>None/i5</immediate>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -269,6 +273,7 @@
         <immediate>None/i12</immediate>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -306,6 +311,7 @@
         <immediate>None/i12</immediate>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -343,6 +349,7 @@
         <immediate>None/i12</immediate>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <switch>
                 <true>
@@ -399,7 +406,7 @@
         <immediate>None/i12</immediate>
         <switch>None/true</switch>
         <type>R</type>
-
+        <isa_extension>i</isa_extension>
         <specialization>
             <signage>
                 <unsigned>
@@ -551,6 +558,7 @@
         <signage>signed</signage>
         <immediate>i20</immediate>
         <type>U</type>
+        <isa_extension>i</isa_extension>
     </lui>
 
     <auipc>
@@ -579,6 +587,7 @@
         <signage>signed</signage>
         <immediate>i20</immediate>
         <type>U</type>
+        <isa_extension>i</isa_extension>
     </auipc>
 
     <!-- Info: Memory access instructions -->
@@ -625,6 +634,7 @@
         <immediate>i12n</immediate>
         <aligned>4</aligned>
         <type>I</type>
+        <isa_extension>i</isa_extension>
 
         <specialization>
             <signage>
@@ -700,6 +710,7 @@
         <immediate>i12n</immediate>
         <aligned>4</aligned>
         <type>I</type>
+        <isa_extension>i</isa_extension>
 
         <specialization>
             <signage>
@@ -760,6 +771,7 @@
         <immediate>i12n</immediate>
         <aligned>4</aligned>
         <type>I</type>
+        <isa_extension>i</isa_extension>
     </lw>
 
     <sb>
@@ -815,6 +827,7 @@
         <immediate>i12n</immediate>
         <aligned>1</aligned>
         <type>S</type>
+        <isa_extension>i</isa_extension>
     </sb>
 
     <sh>
@@ -872,6 +885,7 @@
         <immediate>i12n</immediate>
         <aligned>2</aligned>
         <type>S</type>
+        <isa_extension>i</isa_extension>
     </sh>
 
     <sw>
@@ -903,6 +917,7 @@
         <immediate>i12n</immediate>
         <aligned>4</aligned>
         <type>S</type>
+        <isa_extension>i</isa_extension>
     </sw>
 
     <!-- Info: Control transfer instructions -->
@@ -930,6 +945,7 @@
 
         <signage>signed</signage>
         <type>SB</type>
+        <isa_extension>i</isa_extension>
     </beq>
 
     <bne>
@@ -955,6 +971,7 @@
 
         <signage>signed</signage>
         <type>SB</type>
+        <isa_extension>i</isa_extension>
     </bne>
 
     <blt>
@@ -982,6 +999,7 @@
 
         <signage>signed/unsigned</signage>
         <type>SB</type>
+        <isa_extension>i</isa_extension>
         <specialization>
             <signage>
                 <unsigned>
@@ -1036,6 +1054,7 @@
 
         <signage>signed/unsigned</signage>
         <type>SB</type>
+        <isa_extension>i</isa_extension>
 
         <specialization>
             <signage>
@@ -1092,6 +1111,7 @@
 
         <signage>signed</signage>
         <type>UJ</type>
+        <isa_extension>i</isa_extension>
     </jal>
 
     <jalr>
@@ -1138,10 +1158,11 @@
         <signage>signed</signage>
         <immediate>i12n</immediate>
         <type>UJ</type>
+        <isa_extension>i</isa_extension>
         <icacheMiss></icacheMiss> <!-- if exists, is an icache miss generator candidate-->
     </jalr>
 
-    <nop>
+    <!-- <nop>
         <instr>nop</instr>
         <sequence-instr>nop</sequence-instr>
         <reverse>nop</reverse>
@@ -1150,7 +1171,7 @@
         <immediate>None</immediate>
         <switch>None/true</switch>
         <type>R</type>
-    </nop>
+    </nop> -->
 
     <!-- Info: RV32M instructions -->
 
@@ -1207,6 +1228,8 @@
         <signage>signed</signage>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>m</isa_extension>
+
         <specialization>
             <switch>
                 <true>
@@ -1358,6 +1381,8 @@
         <signage>signed/unsigned/signed-unsigned</signage>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>m</isa_extension>
+
         <specialization>
             <signage>
                 <unsigned>
@@ -1777,6 +1802,7 @@
         <switch>None/true</switch>
         <type>R-M</type> <!-- multicycle-->
         <special-immediates>0,1</special-immediates>
+        <isa_extension>m</isa_extension>
 
 
         <specialization>
@@ -1968,6 +1994,7 @@
         <signage>signed/unsigned</signage>
         <switch>None/true</switch>
         <type>R</type>
+        <isa_extension>m</isa_extension>
 
         <specialization>
             <signage>
@@ -2125,14 +2152,21 @@
         </specialization>
     </rem>
 
-    <!-- Initialise register -->
+    <!-- Initialise register-file -->
     <init>
+        <immediate>
         <register>
             li TargetReg, randValue
             <enable>
                 <immediate>i32</immediate>
             </enable>
         </register>
+        </immediate>
+        <memory>
+        <register>
+        lw TargetReg, ADDRESS(x0)
+        </register>
+        </memory>
     </init>
 
 
@@ -2189,6 +2223,18 @@
         <instr>bne FocusReg, TargetReg, END_SIMULATION</instr>
         <instr>nop</instr>
     </comparison>
+
+    <!-- Save Random value in memory, so that interleaving is not limited by register file size -->
+    <interleaving_random_to_memory>
+        <pre>
+        <instr>li t0, ADDRESS5</instr>
+        <instr>sw randValue, 0(t0)</instr>
+        </pre>
+        <post>
+        <instr>li t0, ADDRESS5</instr>
+        <instr>lw randValue, 0(t0)</instr>
+        </post>
+    </interleaving_random_to_memory>
 
     <global-pre-seqeunce>
         <instr>mv FocusSequenceReg, FocusReg</instr>

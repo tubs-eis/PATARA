@@ -131,8 +131,10 @@
     <!--    </flags>-->
 
     <address>
+        <start_addr_proc_state>64</start_addr_proc_state>
         <offset>8000</offset>
-        <end>2097152</end>
+        <start>8000</start>
+        <end>262140</end> <!-- last byte address -->
         <aligned>4</aligned>
         <format></format>
         <hex>0x</hex>
