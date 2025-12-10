@@ -20,9 +20,9 @@ from util.TestInstruction import TestInstruction
 
 class DataBank:
     class __Databank:
-        def __init__(self, architecture, enabled_extensions=""):
+        def __init__(self, architecture, enabled_extensions=[]):
             self.architecture = architecture
-            self.enabled_extensions = enabled_extensions
+            self.enabled_extensions: list[str] = enabled_extensions
             self._dict = {}
             self.interleaving_random_to_memory = {}
             self.ICacheMissInstruction = []
@@ -110,15 +110,30 @@ class DataBank:
             self.xml_content = xmltodict.parse(file.read())
             self.testinstruction_list = []
             self.instruction_set = []
+
+            # Function to check if the instruction is enabled
+            def instr_is_enabled(instr: str) -> bool:
+                # instructions can define multiple isa extensions, they are enabled if any of these is active
+                instr_isa_extensions: List[str] | None = None
+                if ISA_EXTENSION in self.xml_content[INST_LIST][instr]:
+                    if isinstance(self.xml_content[INST_LIST][instr][ISA_EXTENSION], str):
+                        instr_isa_extensions = [self.xml_content[INST_LIST][instr][ISA_EXTENSION]]
+                    else:
+                        instr_isa_extensions = self.xml_content[INST_LIST][instr][ISA_EXTENSION]
+                if self.enabled_extensions != [] and instr_isa_extensions is not None:
+                    if all([instr_isa_extension not in self.enabled_extensions for instr_isa_extension in instr_isa_extensions]):
+                        return False
+
+                return True
+
             # generate Characteristics Dictionary about Instructions
             for instr in self.xml_content[INST_LIST]:
                 if not self._isInstruction(instr):
                     continue
                 
                 # check if instruction is in the enabled isa extension
-                if self.enabled_extensions != "" and ISA_EXTENSION in self.xml_content[INST_LIST][instr]:
-                    if self.xml_content[INST_LIST][instr][ISA_EXTENSION] not in self.enabled_extensions:
-                        continue
+                if not instr_is_enabled(instr):
+                    continue
                 
                 # handle interleaving memory instructions
                 if INTERLEAVING_RANDOM_TO_MEMORY in instr:
@@ -135,9 +150,8 @@ class DataBank:
                     continue
                 
                 # check if instruction is in the enabled isa extension
-                if self.enabled_extensions != "" and ISA_EXTENSION in self.xml_content[INST_LIST][instr]:
-                    if self.xml_content[INST_LIST][instr][ISA_EXTENSION] not in self.enabled_extensions:
-                        continue
+                if not instr_is_enabled(instr):
+                    continue
                 
                 if INTERLEAVING_RANDOM_TO_MEMORY in instr:
                     self.interleaving_random_to_memory[PRE_KEY] = self.__parseInstructions(self.xml_content[INST_LIST][INTERLEAVING_RANDOM_TO_MEMORY][PRE_KEY][INSTR], self.instruction_set)
@@ -377,7 +391,7 @@ class DataBank:
 
     instance = None
 
-    def __init__(self, architecture="rv32imc", enabled_extensions=""):
+    def __init__(self, architecture="rv32imc", enabled_extensions=[]):
         if not DataBank.instance:
             DataBank.instance = DataBank.__Databank(architecture, enabled_extensions)
 

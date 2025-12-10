@@ -14,10 +14,10 @@ import os
 import subprocess
 import time
 from os.path import exists, isdir
+from typing import List
 
-from Constants import ADDRESS_ALIGNMENT, CONDITIONAL, CONDITIONAL_READ, FOLDER_EXPORT_ASSEMBLY, IMMEDIATE, SATURATION, SIGNAGE, SIMD, SWITCH, get_path_header, get_path_footer
+from Constants import ADDRESS_ALIGNMENT, CONDITIONAL, CONDITIONAL_READ, IMMEDIATE, SATURATION, SIGNAGE, SIMD, SWITCH, get_export_path, get_path_header, get_path_footer, set_export_path
 import Constants
-from extract_rv_instr_from_assembly import count_instructions
 from util.ConditionalExecutionCode import ConditionalExecutionCode
 from util.DataBank import DataBank
 from util.Processor import Processor
@@ -73,7 +73,7 @@ def write_files(prefix, singleInstructionTests, runID, loopIteration):
     fileCount = 0
     for instructionName, code in singleInstructionTests.items():
         filestring = prefix+"_" + instructionName + "_" + str(loopIteration) +"_" + str(fileCount) +"_"+ runID+ "." + Processor().get_assembler_ending()
-        exportFile = os.path.join(FOLDER_EXPORT_ASSEMBLY, filestring)
+        exportFile = os.path.join(get_export_path(), filestring)
 
         rawfile = open(exportFile, 'w')
         rawfile.write(header)
@@ -139,7 +139,7 @@ def createSequence(runID, loopIteration, args):
         filestring += "_" + str(file_count)
         filestring += "_"+ runID
         filestring += "." + Processor().get_assembler_ending()
-        exportFile = os.path.join(FOLDER_EXPORT_ASSEMBLY, filestring)
+        exportFile = os.path.join(get_export_path(), filestring)
 
         rawfile = open(exportFile, 'w')
         rawfile.write(header)
@@ -172,7 +172,7 @@ def createInterleaving(runID, loopIteration, args):
                                                                         specialImmediates=args.specialImmediates, max_instructions=args.max_interleaving_instructions)
 
 
-    exportFile = os.path.join(FOLDER_EXPORT_ASSEMBLY, filestring)
+    exportFile = os.path.join(get_export_path(), filestring)
     rawfile = open(exportFile, 'w')
     rawfile.write(header)
     rawfile.write(code)
@@ -181,7 +181,10 @@ def createInterleaving(runID, loopIteration, args):
 
     return testInstr, instrCount, 1
     
-
+# Argument parsing helpers
+def isa_extensions_arg(isa_extensions_str: str) -> List[str]:
+    single_letter, *multi_letter = isa_extensions_str.split("_")
+    return [*single_letter, *multi_letter]
 
 if __name__ == '__main__':
     start_time = time.time()
@@ -192,8 +195,10 @@ if __name__ == '__main__':
                           help="Architecture description folder in sources/ARCHITECTURE. Defaults to rv32imc.",
                           default="rv32imc")
     argument_options.add_argument("--isa_extensions",
-                                  help="Describe the ISA extensions used (is multiple extensions are valid, append them). Defaults to all extensions. Possible values for RISC-V are: 'i','m', 'im'",
+                                  type=isa_extensions_arg,
+                                  help="Filter tested instructions by isa extensions. The format is: Single letter extensions optionally followed by multi letter extensions separated by underscores. Enables all extensions if unspecified or empty. Examples for RISC-V are: 'i', 'm', 'im', 'i_Zmmul'",
                                   default="")
+    argument_options.add_argument("-o", "--out-dir", help="Where to store the generated assembly files", default="reversiAssembly")
     argument_options.add_argument("-r", "--files", "--repetitions", help="How many assembly files to generate for each configuration. Defaults to 1.",
                           default="1")
     argument_options.add_argument("-t","--threads", help="How many threads to use for the generation. Defaults to 1.",type=int,
@@ -242,7 +247,7 @@ if __name__ == '__main__':
                           help="Give the list of Sequences to iterate through. Defaults to 4. Only works on sequences!",type=int,
                           default=4)
     arguments_sequence.add_argument("--sequenceStall",
-                          help="Probability to stall the pipeline between base instructions with forwarding holes. Defaults to 0.5",
+                          help="Probability to stall the pipeline between base instructions with forwarding holes. Defaults to 0.5",type=float,
                           default=0.5)
 
     randomization_group = parser.add_argument_group('Randomization Options')
@@ -287,10 +292,12 @@ if __name__ == '__main__':
     
     random_ops = RandomOptions(args)
     
+    set_export_path(args.out_dir)
+
     if args.clean:
         # rm files from reversiAssembly folder
-        print(f"Cleaning Export Directory {FOLDER_EXPORT_ASSEMBLY}")
-        command = "rm " + FOLDER_EXPORT_ASSEMBLY + "/*"
+        print(f"Cleaning Export Directory {get_export_path()}")
+        command = "rm " + get_export_path() + "/*"
         print(command)
         os.system(command)
     
@@ -312,7 +319,7 @@ if __name__ == '__main__':
     instruction_set = DataBank().get_instruction_list()
     v = ConditionalExecutionCode(args.architecture, instruction_set)
     # prepare Export folder
-    createDirectoryIfNew(FOLDER_EXPORT_ASSEMBLY)
+    createDirectoryIfNew(get_export_path())
     forwardingHole = int(args.forwarding)
     specialImmediates = float(args.specialImmediates)
     forwardingStallProb = float(args.sequenceStall)
@@ -360,7 +367,7 @@ if __name__ == '__main__':
     numberTestInstructions = 0
     totalInstructions = 0
     fileCount =0
-    original_fileCount = getFilesInDir(FOLDER_EXPORT_ASSEMBLY)
+    original_fileCount = getFilesInDir(get_export_path())
     
     # if singleInstruction:
     #     singleInstructionTests, testcases, instrCount = stack.createSingleInstructionTest(random_ops, immediateProbability,
@@ -371,7 +378,7 @@ if __name__ == '__main__':
     #     for [instructionName, code] in singleInstructionTests:
     #         filestring = "singleInstr_" + instructionName + "_switch_" + str(
     #             int(switchProbability * 100)) +"_"+ runID+ "." + Processor().get_assembler_ending()
-    #         exportFile = os.path.join(FOLDER_EXPORT_ASSEMBLY, filestring)
+    #         exportFile = os.path.join(get_export_path(), filestring)
     #         rawfile = open(exportFile, 'w')
 
     #         rawfile.write(header)

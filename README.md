@@ -15,7 +15,7 @@ Examples for targets can be found under `targets`.
 
 PATARA implements the instruction sets for RV32I and RV32M. 
 The paper can be found here:
-> S. Gesper, F. Stuckmann, L. Wöbbekind and G. Payá-Vayá. "PATARA: Extension of a Verification Framework for RISC-V Instruction Set Implementations". 2023 23rd International Conference on Embedded Computer Systems: Architectures, Modeling and Simulation (SAMOS), 2023, accepted for publication.
+> S. Gesper, F. Stuckmann, L. Wöbbekind and G. Payá-Vayá. "PATARA: Extension of a Verification Framework for RISC-V Instruction Set Implementations". 2023 23rd International Conference on Embedded Computer Systems: Architectures, Modeling and Simulation (SAMOS), 2023, https://doi.org/10.1007/978-3-031-46077-7_15
 
 
 **Citation**

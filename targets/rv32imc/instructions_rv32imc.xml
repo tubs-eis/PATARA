@@ -1229,6 +1229,7 @@
         <switch>None/true</switch>
         <type>R</type>
         <isa_extension>m</isa_extension>
+        <isa_extension>Zmmul</isa_extension>
 
         <specialization>
             <switch>
@@ -1382,6 +1383,7 @@
         <switch>None/true</switch>
         <type>R</type>
         <isa_extension>m</isa_extension>
+        <isa_extension>Zmmul</isa_extension>
 
         <specialization>
             <signage>

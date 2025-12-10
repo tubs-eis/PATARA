@@ -7,7 +7,7 @@
 # https://opensource.org/licenses/MIT
 
 from enum import Enum
-
+import os
 
 class OPERAND_TYPE(Enum):
     IMMEDIATE = "immediate"
@@ -173,15 +173,19 @@ INSTRUCTION_FEATURE_LIST = [ISSUE_SLOT, IMMEDIATE, FLAGS, ADDRESS_ALIGNMENT]
 INSTRUCTION_SPECIAL_FEATURE = [SIGNAGE, SIMD, CONDITIONAL, CONDITIONAL_READ, SATURATION, SWITCH]
 CONDITION_ELEMENTS = ["zero", "carry", "overflow", "negative"]
 
-FOLDER_EXPORT_ASSEMBLY = "reversiAssembly"
-
+def get_base_path():
+    # NOTE: This will always point to the Constants.py file,
+    # if we move this file, we need to this function
+    thisfilepath = __file__
+    thisfiledir = os.path.dirname(thisfilepath)
+    return thisfiledir
 
 def get_path_processor(architecture):
-    return 'targets/' + architecture + '/processor_' + architecture + '.xml'
+    return get_base_path() + '/targets/' + architecture + '/processor_' + architecture + '.xml'
 
 
 def get_path_instruction(architecture):
-    return 'targets/' + architecture + '/instructions_' + architecture + '.xml'
+    return get_base_path() + '/targets/' + architecture + '/instructions_' + architecture + '.xml'
 
 
 def get_path_header(architecture, random_opts, header_path=""):
@@ -189,7 +193,7 @@ def get_path_header(architecture, random_opts, header_path=""):
         return header_path
     
     header_string = "_randomized" if random_opts.has_random_init_reg_file() else "_not_randomized"
-    return 'targets/' + architecture + '/header_' + architecture + header_string + '.s'
+    return get_base_path() + '/targets/' + architecture + '/header_' + architecture + header_string + '.s'
 
 
 def get_path_footer(architecture, random_opts, footer_path=""):
@@ -197,7 +201,17 @@ def get_path_footer(architecture, random_opts, footer_path=""):
         return footer_path
     
     footer_string = "_randomized" if random_opts.has_random_init_reg_file() else "_not_randomized"
-    return 'targets/' + architecture + '/footer_' + architecture + footer_string + '.s'
+    return get_base_path() + '/targets/' + architecture + '/footer_' + architecture + footer_string + '.s'
+
+export_path = "reversiAssembly"
+
+def set_export_path(path):
+    global export_path
+    export_path = path
+
+def get_export_path():
+    global export_path
+    return export_path
 
 
 INSTRUCTION_DEFAULT_MODES = "default"
