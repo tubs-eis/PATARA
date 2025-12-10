@@ -10,6 +10,7 @@ PATARA can be used for a host of different hardware targets.
 These can be configured using XML files to describe the characteristcs of a custom processor and ISAs. 
 Examples for targets can be found under `targets`.
 
+This release is part of the [DI-GATE-V](https://www.tu-braunschweig.de/eis/forschung-und-projekte/di-gate-v) project funded as part of the [DE:Sign](https://www.elektronikforschung.de/foerderung/bekanntmachungen/design) program by the German Federal Ministry of Research, Technology and Space (BMFTR).
 
 **RISC-V Support**
 
@@ -257,6 +258,7 @@ After the execution of a test, the Address 0 has to be evaluated to determine if
 
 - Fabian Stuckmann (Technische Universität Braunschweig)
 - Sven Gesper (Technische Universität Braunschweig)
+- Jasper Homann (Technische Universität Braunschweig)
 - Lucy Wöbbekind (Technische Universität Braunschweig)
 - Guillermo Payá Vayá (Technische Universität Braunschweig)
 
